@@ -79,7 +79,8 @@ fun LauncherRoot(
                     repository.launchApp(item)
                     gestureState.close()
                 },
-                modifier = gestureModifier
+                onCloseDrawer = { gestureState.close() },
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
