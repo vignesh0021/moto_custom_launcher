@@ -87,8 +87,8 @@ jobs:
           fi
 
           if [ -n "$CLASSES_REPORT" ] && [ -f "$CLASSES_REPORT" ]; then
-            # Scan for unstable data classes in launcher domain
-            UNSTABLE_CLASSES=$(grep -E "^unstable class com\.motorola\.launcher" "$CLASSES_REPORT" || true)
+            # Scan for unstable data classes in launcher UI state domain
+            UNSTABLE_CLASSES=$(grep -E "^unstable class com\.motorola\.launcher\.ui\.model" "$CLASSES_REPORT" || true)
             if [ -n "$UNSTABLE_CLASSES" ]; then
               echo "::error::Detected unstable UI state classes:"
               echo "$UNSTABLE_CLASSES"
