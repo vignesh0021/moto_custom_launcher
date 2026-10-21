@@ -56,11 +56,9 @@ class BinaryDiskCache(context: Context) {
                         return null
                     }
 
-                    // Decode directly into GPU HARDWARE memory
+                    // Decode safely into ARGB_8888 memory
                     val options = BitmapFactory.Options().apply {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            inPreferredConfig = Bitmap.Config.HARDWARE
-                        }
+                        inPreferredConfig = Bitmap.Config.ARGB_8888
                         inMutable = false
                     }
 

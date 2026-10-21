@@ -3,6 +3,7 @@ package com.motorola.launcher
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -22,42 +23,63 @@ import com.motorola.launcher.ui.theme.MotoLauncherTheme
  */
 class MainActivity : ComponentActivity() {
 
-    private lateinit var display144HzManager: Display144HzManager
-    private lateinit var wallpaperZoomController: WallpaperZoomController
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
+    private var display144HzManager: Display144HzManager? = null
+    private var wallpaperZoomController: WallpaperZoomController? = null
     private var curvedEdgeGestureController: CurvedEdgeGestureController? = null
-    private lateinit var repository: AppRepository
+    private var repository: AppRepository? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Enforce edge-to-edge transparent system bars
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
-        )
+        try {
+            // Enforce edge-to-edge transparent system bars
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+                navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+            )
+        } catch (e: Throwable) {
+            Log.w(TAG, "enableEdgeToEdge failed: ${e.message}")
+        }
 
         super.onCreate(savedInstanceState)
 
-        // 1. Hardware Wallpaper Window Plumbing
-        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        try {
+            // 1. Hardware Wallpaper Window Plumbing
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed setting window wallpaper flags: ${e.message}")
+        }
 
-        // 2. Lock 144Hz Display Mode (6.944ms VSYNC cadence)
-        display144HzManager = Display144HzManager(this)
-        display144HzManager.enforce144HzMode()
+        // 2. Hardware Wallpaper Zoom & Parallax Controller
+        val wpController = WallpaperZoomController(this).also {
+            wallpaperZoomController = it
+        }
 
-        // 3. Hardware Wallpaper Zoom & Parallax Controller
-        wallpaperZoomController = WallpaperZoomController(this)
+        // 3. Lock 144Hz Display Mode (6.944ms VSYNC cadence)
+        display144HzManager = Display144HzManager(this).also {
+            it.enforce144HzMode()
+        }
 
         // 4. Curved Edge Palm Exclusion Controller
-        curvedEdgeGestureController = CurvedEdgeGestureController(window.decorView)
+        try {
+            curvedEdgeGestureController = CurvedEdgeGestureController(window.decorView)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Curved edge exclusion initialization failed: ${e.message}")
+        }
 
-        // 5. Reactive Repository & Hardware Icon Hydration
-        repository = AppRepository(applicationContext)
+        // 5. Reactive Repository & Icon Hydration
+        val repo = AppRepository(applicationContext).also {
+            repository = it
+        }
 
         setContent {
             MotoLauncherTheme {
                 LauncherRoot(
-                    repository = repository,
-                    wallpaperZoomController = wallpaperZoomController
+                    repository = repo,
+                    wallpaperZoomController = wpController
                 )
             }
         }
@@ -65,19 +87,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        wallpaperZoomController.onWindowAttached(window.decorView)
-        display144HzManager.enforce144HzMode()
+        wallpaperZoomController?.onWindowAttached(window.decorView)
+        display144HzManager?.enforce144HzMode()
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        wallpaperZoomController.onWindowDetached()
+        wallpaperZoomController?.onWindowDetached()
     }
 
     override fun onResume() {
         super.onResume()
         // Re-enforce 144Hz mode upon returning to home screen
-        display144HzManager.enforce144HzMode()
+        display144HzManager?.enforce144HzMode()
     }
 
     /**
@@ -86,13 +108,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (Intent.ACTION_MAIN == intent.action && intent.hasCategory(Intent.CATEGORY_HOME)) {
-            wallpaperZoomController.updateDrawerProgress(0.0f)
+            wallpaperZoomController?.updateDrawerProgress(0.0f)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         curvedEdgeGestureController?.detach()
-        repository.onDestroy()
+        repository?.onDestroy()
     }
 }

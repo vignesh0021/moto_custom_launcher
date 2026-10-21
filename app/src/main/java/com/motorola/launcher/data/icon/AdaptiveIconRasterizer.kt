@@ -44,30 +44,17 @@ class AdaptiveIconRasterizer(private val context: Context) {
         val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else targetSizePx
         val size = width.coerceAtLeast(height).coerceIn(targetSizePx, targetSizePx * 2)
 
-        var softwareBitmap: Bitmap? = null
         try {
-            // Allocate transient ARGB_8888 buffer
-            softwareBitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val softwareBitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(softwareBitmap)
 
             drawable.setBounds(0, 0, size, size)
             drawable.draw(canvas)
 
-            // Convert to immutable GPU AHardwareBuffer texture
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val hwBitmap = softwareBitmap.copy(Bitmap.Config.HARDWARE, false)
-                hwBitmap
-            } else {
-                softwareBitmap
-            }
+            return softwareBitmap
         } catch (t: Throwable) {
             Log.e(TAG, "Rasterization failed: ${t.message}", t)
             return null
-        } finally {
-            // Immediately reclaim transient software memory
-            if (softwareBitmap != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                softwareBitmap.recycle()
-            }
         }
     }
 }

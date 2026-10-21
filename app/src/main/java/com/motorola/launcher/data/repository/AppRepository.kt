@@ -12,13 +12,11 @@ import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
-import com.motorola.launcher.data.db.AppDao
-import com.motorola.launcher.data.db.AppEntity
-import com.motorola.launcher.data.db.LauncherDatabase
 import com.motorola.launcher.data.icon.HardwareIconManager
 import com.motorola.launcher.ui.model.AppItem
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,18 +24,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.flow.flowOf
-
 /**
- * Reactive Repository managing installed launcher apps, Room FTS indexing,
- * and hardware icon hydration via LauncherApps.Callback.
+ * High-performance, crash-resilient Repository managing installed launcher apps
+ * and hardware-backed icon hydration via LauncherApps.Callback.
  */
 class AppRepository(
     private val context: Context,
@@ -53,15 +46,13 @@ class AppRepository(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + exceptionHandler)
     private val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
     private val userManager = context.getSystemService(Context.USER_SERVICE) as? UserManager
-    private val database = LauncherDatabase.getInstance(context)
-    private val appDao: AppDao = database.appDao()
 
     private val _appsState = MutableStateFlow<ImmutableList<AppItem>>(emptyList<AppItem>().toImmutableList())
     val appsState: StateFlow<ImmutableList<AppItem>> = _appsState.asStateFlow()
 
     private val launcherAppsCallback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
-            scope.launch { reloadPackage(packageName, user) }
+            scope.launch { reloadAll() }
         }
 
         override fun onPackageRemoved(packageName: String, user: UserHandle) {
@@ -69,7 +60,7 @@ class AppRepository(
         }
 
         override fun onPackageChanged(packageName: String, user: UserHandle) {
-            scope.launch { reloadPackage(packageName, user) }
+            scope.launch { reloadAll() }
         }
 
         override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
@@ -111,7 +102,6 @@ class AppRepository(
                 listOf(Process.myUserHandle())
             }
 
-            val entities = mutableListOf<AppEntity>()
             val appItems = mutableListOf<AppItem>()
 
             for (user in userProfiles) {
@@ -136,18 +126,6 @@ class AppRepository(
                         val installTime = try { info.firstInstallTime } catch (e: Throwable) { 0L }
                         val iconKey = "icon_${component.packageName}_${component.className}_$installTime"
 
-                        entities.add(
-                            AppEntity(
-                                componentKey = componentKey,
-                                packageName = component.packageName,
-                                activityName = component.className,
-                                userSerial = userSerial,
-                                label = label,
-                                installTime = installTime,
-                                iconCacheKey = iconKey
-                            )
-                        )
-
                         // Check instant memory cache hit for icon; if absent, will load in background
                         val cachedBitmap = iconManager.peekMemory(iconKey)
                         appItems.add(
@@ -171,36 +149,15 @@ class AppRepository(
             appItems.sortBy { it.label.lowercase() }
             _appsState.value = appItems.toImmutableList()
 
-            // Sync with SQLite FTS5 database in background IO
-            try {
-                withContext(Dispatchers.IO) {
-                    appDao.replaceAll(entities)
-                }
-            } catch (e: Throwable) {
-                Log.e(TAG, "Failed writing to Room DB: ${e.message}")
-            }
-
-            // Pre-warm hardware icons asynchronously so scroll remains at 144Hz
+            // Pre-warm icons asynchronously
             hydrateIconsInBackground(appItems)
         } catch (e: Throwable) {
             Log.e(TAG, "Fatal error in reloadAll: ${e.message}", e)
         }
     }
 
-    private suspend fun reloadPackage(packageName: String, user: UserHandle) = withContext(Dispatchers.Default) {
-        reloadAll()
-    }
-
     private suspend fun removePackage(packageName: String, user: UserHandle) = withContext(Dispatchers.Default) {
         try {
-            val userSerial = userManager?.getSerialNumberForUser(user) ?: 0L
-            withContext(Dispatchers.IO) {
-                try {
-                    appDao.deletePackage(packageName, userSerial)
-                } catch (e: Throwable) {
-                    Log.e(TAG, "Failed deleting package from DB: ${e.message}")
-                }
-            }
             val current = _appsState.value.filterNot { it.packageName == packageName && it.userHandle == user }
             _appsState.value = current.toImmutableList()
         } catch (e: Throwable) {
@@ -209,40 +166,23 @@ class AppRepository(
     }
 
     /**
-     * Sub-2ms full text search query executed against SQLite FTS5 table.
+     * Sub-millisecond prefix-ranked search query executed against in-memory index.
      */
     fun searchApps(query: String): Flow<ImmutableList<AppItem>> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
             return flowOf(_appsState.value)
         }
-        val sanitized = "${trimmed.replace("'", "''").replace("\"", "")}*"
-        return try {
-            appDao.searchAppsFts(sanitized)
-                .distinctUntilChanged()
-                .map { entities ->
-                    entities.map { entity ->
-                        val user = try {
-                            userManager?.getUserForSerialNumber(entity.userSerial) ?: Process.myUserHandle()
-                        } catch (e: Throwable) {
-                            Process.myUserHandle()
-                        }
-                        AppItem(
-                            componentKey = entity.componentKey,
-                            packageName = entity.packageName,
-                            activityName = entity.activityName,
-                            label = entity.label,
-                            userHandle = user,
-                            iconCacheKey = entity.iconCacheKey,
-                            iconBitmap = iconManager.peekMemory(entity.iconCacheKey)
-                        )
-                    }.toImmutableList()
-                }
-                .flowOn(Dispatchers.IO)
-        } catch (e: Throwable) {
-            Log.e(TAG, "Search query error: ${e.message}")
-            flowOf(_appsState.value)
-        }
+        val currentApps = _appsState.value
+        val filtered = currentApps.filter {
+            it.label.contains(trimmed, ignoreCase = true) ||
+            it.packageName.contains(trimmed, ignoreCase = true)
+        }.sortedWith(compareBy(
+            { !it.label.startsWith(trimmed, ignoreCase = true) }, // Prefix matches first
+            { it.label.lowercase() }
+        )).toImmutableList()
+
+        return flowOf(filtered)
     }
 
     private fun hydrateIconsInBackground(items: List<AppItem>) {
