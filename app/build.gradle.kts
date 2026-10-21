@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.androidx.baselineprofile)
 }
@@ -21,12 +20,12 @@ android {
             useSupportLibrary = true
         }
 
-        // Room SQLite FTS5 Compiler Schema Directory
-        kapt {
-            arguments {
-                arg("room.schemaLocation", "$projectDir/schemas")
-                arg("room.incremental", "true")
-                arg("room.expandProjection", "true")
+        // Room SQLite FTS5 Compiler Schema Options
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments["room.schemaLocation"] = "$projectDir/schemas"
+                arguments["room.incremental"] = "true"
+                arguments["room.expandProjection"] = "true"
             }
         }
     }
@@ -123,7 +122,7 @@ dependencies {
     // Room SQLite FTS5 Virtual Table DB
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    annotationProcessor(libs.androidx.room.compiler)
 
     // Baseline Profiles & ProfileInstaller
     implementation(libs.androidx.profileinstaller)
