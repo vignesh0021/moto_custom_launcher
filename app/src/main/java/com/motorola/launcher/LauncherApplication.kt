@@ -12,8 +12,14 @@ class LauncherApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Boost launcher main thread to high display priority
-        Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY)
-        Log.i("LauncherApplication", "Motorola Edge 50 Launcher Initialized at DISPLAY thread priority.")
+        try {
+            // Setting negative nice priorities (like THREAD_PRIORITY_DISPLAY = -4) requires CAP_SYS_NICE
+            // which is restricted to system/root apps. Normal user apps throw SecurityException.
+            // Safely initialize with default priority.
+            Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT)
+            Log.i("LauncherApplication", "Motorola Edge 50 Launcher Initialized successfully.")
+        } catch (e: Throwable) {
+            Log.w("LauncherApplication", "Thread priority initialization skipped: ${e.message}")
+        }
     }
 }

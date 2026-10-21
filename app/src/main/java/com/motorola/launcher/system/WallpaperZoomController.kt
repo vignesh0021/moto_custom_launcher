@@ -75,13 +75,17 @@ class WallpaperZoomController(private val activity: Activity) {
      */
     fun setWorkspaceOffset(pageOffset: Float, numPages: Int) {
         val token = getWindowToken() ?: return
-        if (numPages <= 1) {
-            wallpaperManager.setWallpaperOffsets(token, 0.5f, 0.0f)
-            return
+        try {
+            if (numPages <= 1) {
+                wallpaperManager.setWallpaperOffsets(token, 0.5f, 0.0f)
+                return
+            }
+            val step = 1.0f / (numPages - 1).toFloat()
+            wallpaperManager.setWallpaperOffsetSteps(step, 1.0f)
+            wallpaperManager.setWallpaperOffsets(token, pageOffset.coerceIn(0.0f, 1.0f), 0.0f)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed setting wallpaper offset: ${t.message}")
         }
-        val step = 1.0f / (numPages - 1).toFloat()
-        wallpaperManager.setWallpaperOffsetSteps(step, 1.0f)
-        wallpaperManager.setWallpaperOffsets(token, pageOffset.coerceIn(0.0f, 1.0f), 0.0f)
     }
 
     /**
