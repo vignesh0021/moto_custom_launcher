@@ -70,21 +70,29 @@ class Display144HzManager(private val activity: Activity) {
     private fun enforceSurfaceFrameRate(window: Window) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
-                // Request exact 144Hz cadence with CHANGE_FRAME_RATE_ALWAYS to avoid throttling
+                // Ensure Window LayoutParams preferredRefreshRate is explicitly locked to 144Hz
+                val layoutParams = window.attributes
+                layoutParams.preferredRefreshRate = TARGET_REFRESH_RATE
+                window.attributes = layoutParams
+
+                // Android 11+ (API 30..36) Surface Frame Rate Hint via ViewRootImpl Surface
                 window.decorView.post {
                     try {
-                        val surfaceControl = window.decorView.rootSurfaceControl
-                        if (surfaceControl != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            // Enforce exact 144Hz frame rate via Surface
-                            window.setFrameRate(
-                                TARGET_REFRESH_RATE,
-                                Surface.FRAME_RATE_COMPATIBILITY_EXACT,
-                                Surface.CHANGE_FRAME_RATE_ALWAYS
-                            )
-                            Log.d(TAG, "Window Surface frame-rate locked to $TARGET_REFRESH_RATE Hz")
+                        val viewRootImpl = window.decorView.javaClass.getMethod("getViewRootImpl").invoke(window.decorView)
+                        if (viewRootImpl != null) {
+                            val surfaceMethod = viewRootImpl.javaClass.getMethod("getSurface")
+                            val surface = surfaceMethod.invoke(viewRootImpl) as? Surface
+                            if (surface != null && surface.isValid) {
+                                surface.setFrameRate(
+                                    TARGET_REFRESH_RATE,
+                                    Surface.FRAME_RATE_COMPATIBILITY_EXACT,
+                                    Surface.CHANGE_FRAME_RATE_ALWAYS
+                                )
+                                Log.d(TAG, "Window Surface frame-rate locked to $TARGET_REFRESH_RATE Hz via Surface")
+                            }
                         }
                     } catch (e: Throwable) {
-                        Log.w(TAG, "Failed to apply Surface.setFrameRate directly: ${e.message}")
+                        Log.d(TAG, "Direct Surface frame rate hint skipped: ${e.message}")
                     }
                 }
             } catch (t: Throwable) {

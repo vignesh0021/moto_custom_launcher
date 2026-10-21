@@ -24,7 +24,7 @@ A production-grade, ultra-low-latency Android Launcher purpose-built and tuned f
 - **Wallpaper Zoom-Out Interpolation:**
   `WallpaperZoomController.kt` coordinates directly with `WallpaperManager.setWallpaperZoomOut(token, zoom)` to interpolate SurfaceFlinger live wallpaper depth during drawer swipes without CPU/GPU bitmap overhead.
 - **Explicit 144Hz Refresh-Rate Locking:**
-  `Display144HzManager.kt` queries `Display.supportedModes`, binds the window to the native 144Hz mode (`preferredDisplayModeId`), and issues `window.setFrameRate(144.0f, Surface.FRAME_RATE_COMPATIBILITY_EXACT, Surface.CHANGE_FRAME_RATE_ALWAYS)`.
+  `Display144HzManager.kt` queries `Display.supportedModes`, binds the window to the native 144Hz mode (`preferredDisplayModeId`), locks `preferredRefreshRate = 144f`, and applies `Surface.setFrameRate(144.0f, Surface.FRAME_RATE_COMPATIBILITY_EXACT, Surface.CHANGE_FRAME_RATE_ALWAYS)` to the window surface.
 - **53° Waterfall Curved Edge Palm Rejection:**
   `CurvedEdgeGestureController.kt` computes 28dp curved waterfall exclusion zones and applies `View.systemGestureExclusionRects` along the palm contact regions to prevent false back-gesture triggers during one-handed use.
 
