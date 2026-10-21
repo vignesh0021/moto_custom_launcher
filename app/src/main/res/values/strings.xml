@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Moto Ultra Launcher</string>
+    <string name="search_apps">Search apps and shortcuts…</string>
+    <string name="no_apps_found">No apps found</string>
+</resources>

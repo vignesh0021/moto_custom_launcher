@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="transparent">#00000000</color>
+    <color name="scrim_dark">#99000000</color>
+    <color name="scrim_light">#33000000</color>
+    <color name="card_surface">#1AFFFFFF</color>
+    <color name="card_surface_stroke">#33FFFFFF</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="accent_moto_blue">#00E5FF</color>
+</resources>
