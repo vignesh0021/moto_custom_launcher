@@ -89,9 +89,8 @@ android {
 
 composeCompiler {
     // Enable Compose Compiler Metrics and Reports for CI Gate
-    val composeReportsDir = layout.buildDirectory.dir("reports/compose").get().asFile.absolutePath
-    metricsDestination = layout.buildDirectory.dir("reports/compose/metrics")
-    reportsDestination = layout.buildDirectory.dir("reports/compose/reports")
+    metricsDestination.set(layout.buildDirectory.dir("reports/compose/metrics"))
+    reportsDestination.set(layout.buildDirectory.dir("reports/compose/reports"))
     stabilityConfigurationFiles.add(layout.projectDirectory.file("compose-stability.conf"))
 }
 
