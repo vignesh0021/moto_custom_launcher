@@ -43,8 +43,10 @@ jobs:
           gradle-version: '9.6.0'
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Grant Execute Permissions to Gradle Wrapper
-        run: chmod +x gradlew || true
+      - name: Generate Official Gradle 9.6.0 Wrapper
+        run: |
+          gradle wrapper --gradle-version 9.6.0
+          chmod +x gradlew
 
       # ------------------------------------------------------------------------
       # STEP 1: Kotlin 2.4.20 K2 Compilation & Compose Compiler Metrics Run
