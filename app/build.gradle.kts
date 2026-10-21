@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.androidx.baselineprofile)
 }
 
 android {
@@ -126,7 +125,6 @@ dependencies {
 
     // Baseline Profiles & ProfileInstaller
     implementation(libs.androidx.profileinstaller)
-    "baselineProfile"(project(":benchmark"))
 
     // Testing
     testImplementation(libs.junit)
