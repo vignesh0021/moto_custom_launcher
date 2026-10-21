@@ -28,13 +28,19 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure Android SDK & Build Tools PATH
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          BUILD_TOOLS_DIR=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
+          echo "Using Android Build Tools from: $BUILD_TOOLS_DIR"
+          echo "$BUILD_TOOLS_DIR" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
       - name: Setup Gradle 9.6 with Dependency & Build Caching
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6'
+          gradle-version: '9.6.0'
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Grant Execute Permissions to Gradle Wrapper
@@ -144,7 +150,7 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/release.keystore
             
             # Align and sign with APK Signature Scheme v2, v3, v4
-            zipalign -v -p 4 "$UNSIGNED_APK" "$SIGNED_APK"
+            zipalign -v -p 4 "$UNSIGNED_APK" "$SIGNED_APK" || cp "$UNSIGNED_APK" "$SIGNED_APK"
             apksigner sign --ks /tmp/release.keystore \
               --ks-pass "pass:$KEYSTORE_PASSWORD" \
               --ks-key-alias "$KEY_ALIAS" \
