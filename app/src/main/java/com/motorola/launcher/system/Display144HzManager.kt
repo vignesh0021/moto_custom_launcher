@@ -83,11 +83,18 @@ class Display144HzManager(private val activity: Activity) {
                             val surfaceMethod = viewRootImpl.javaClass.getMethod("getSurface")
                             val surface = surfaceMethod.invoke(viewRootImpl) as? Surface
                             if (surface != null && surface.isValid) {
-                                surface.setFrameRate(
-                                    TARGET_REFRESH_RATE,
-                                    Surface.FRAME_RATE_COMPATIBILITY_EXACT,
-                                    Surface.CHANGE_FRAME_RATE_ALWAYS
-                                )
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    surface.setFrameRate(
+                                        TARGET_REFRESH_RATE,
+                                        Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,
+                                        Surface.CHANGE_FRAME_RATE_ALWAYS
+                                    )
+                                } else {
+                                    surface.setFrameRate(
+                                        TARGET_REFRESH_RATE,
+                                        Surface.FRAME_RATE_COMPATIBILITY_DEFAULT
+                                    )
+                                }
                                 Log.d(TAG, "Window Surface frame-rate locked to $TARGET_REFRESH_RATE Hz via Surface")
                             }
                         }

@@ -37,7 +37,7 @@ fun FastScrollScrubber(
                 detectVerticalDragGestures { change, _ ->
                     val totalHeight = size.height
                     val itemHeight = totalHeight / ALPHABET.size.toFloat()
-                    val touchY = change.position.y.coerceIn(0f, totalHeight - 1)
+                    val touchY = change.position.y.coerceIn(0f, (totalHeight - 1).toFloat())
                     val letterIndex = (touchY / itemHeight).toInt().coerceIn(0, ALPHABET.size - 1)
                     val letter = ALPHABET[letterIndex]
 

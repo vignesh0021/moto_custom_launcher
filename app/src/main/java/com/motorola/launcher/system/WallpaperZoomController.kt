@@ -58,9 +58,14 @@ class WallpaperZoomController(private val activity: Activity) {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                wallpaperManager.setWallpaperZoomOut(token, targetZoom)
+                val method = wallpaperManager.javaClass.getMethod(
+                    "setWallpaperZoomOut",
+                    IBinder::class.java,
+                    Float::class.javaPrimitiveType
+                )
+                method.invoke(wallpaperManager, token, targetZoom)
             } catch (t: Throwable) {
-                // Ignore binder errors if window token is detached
+                // Graceful fallback if system API is inaccessible or window detached
             }
         }
     }
