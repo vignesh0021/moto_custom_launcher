@@ -43,17 +43,12 @@ jobs:
           gradle-version: '9.6.0'
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Generate Official Gradle 9.6.0 Wrapper
-        run: |
-          gradle wrapper --gradle-version 9.6.0
-          chmod +x gradlew
-
       # ------------------------------------------------------------------------
       # STEP 1: Kotlin 2.4.20 K2 Compilation & Compose Compiler Metrics Run
       # ------------------------------------------------------------------------
       - name: Compile Release with R8 Full Mode & Compose Metrics
         run: |
-          ./gradlew assembleRelease \
+          gradle assembleRelease \
             -Pandroid.enableR8.fullMode=true \
             -Pandroidx.compose.compiler.plugins.kotlin.reportsDestination=$GITHUB_WORKSPACE/app/build/reports/compose/reports \
             -Pandroidx.compose.compiler.plugins.kotlin.metricsDestination=$GITHUB_WORKSPACE/app/build/reports/compose/metrics \
