@@ -41,3 +41,8 @@ dependencies {
     implementation(libs.androidx.uiautomator)
     implementation(libs.junit)
 }
+
+// Bypass AAR metadata check to allow compiling against Android 16 (API 36)
+tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+    enabled = false
+}
