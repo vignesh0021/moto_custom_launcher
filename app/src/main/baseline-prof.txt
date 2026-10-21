@@ -1,7 +1,7 @@
 # Initial Baseline Profile for Motorola Edge 50 Custom Launcher
 # Pre-compiles critical path classes and methods for sub-6.94ms first frame
 Lcom/motorola/launcher/MainActivity;
-Lcom/motorola/launcher/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLcom/motorola/launcher/MainActivity;->onCreate(Landroid/os/Bundle;)V
 Lcom/motorola/launcher/LauncherApplication;
 Lcom/motorola/launcher/system/Display144HzManager;
 Lcom/motorola/launcher/system/WallpaperZoomController;
