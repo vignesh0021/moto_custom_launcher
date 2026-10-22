@@ -34,6 +34,9 @@ class DrawerGestureState(
 ) {
     private val velocityTracker = VelocityTracker360Hz()
     private var animationJob: Job? = null
+    private var dragJob: Job? = null
+    private val dragChannel = kotlinx.coroutines.channels.Channel<Float>(kotlinx.coroutines.channels.Channel.CONFLATED)
+    private var currentDragProgress = 0f
 
     // Discrete visibility state to prevent root recomposition on every fractional progress frame
     var isDrawerVisible by mutableStateOf(false)
@@ -46,28 +49,36 @@ class DrawerGestureState(
 
     fun onDragStart(downTimeMillis: Long, y: Float) {
         animationJob?.cancel()
+        dragJob?.cancel()
         isDrawerVisible = true
         velocityTracker.reset()
         velocityTracker.addPoint(downTimeMillis, y)
+        currentDragProgress = animatable.value
+
+        // Single dedicated coroutine draining the conflated 360Hz drag stream
+        dragJob = scope.launch {
+            for (p in dragChannel) {
+                animatable.snapTo(p)
+                wallpaperZoomController?.updateDrawerProgress(p)
+            }
+        }
     }
 
     /**
-     * Called directly within the PointerInputScope coroutine for zero-allocation 360Hz updates.
+     * Non-suspending, zero-allocation 360Hz touch sample ingest.
      */
-    suspend fun onDrag(timeMillis: Long, y: Float, deltaY: Float, maxDragPx: Float) {
+    fun onDrag(timeMillis: Long, y: Float, deltaY: Float, maxDragPx: Float) {
         velocityTracker.addPoint(timeMillis, y)
         if (maxDragPx <= 0f) return
 
         // Dragging UP decreases Y, which INCREASES drawer progress [0..1]
         val deltaProgress = -deltaY / maxDragPx
-        val newProgress = (animatable.value + deltaProgress).coerceIn(0f, 1f)
-
-        // Direct snap in current coroutine - zero allocations per pointer move event
-        animatable.snapTo(newProgress)
-        wallpaperZoomController?.updateDrawerProgress(newProgress)
+        currentDragProgress = (currentDragProgress + deltaProgress).coerceIn(0f, 1f)
+        dragChannel.trySend(currentDragProgress)
     }
 
     fun onDragEnd(timeMillis: Long, maxDragPx: Float) {
+        dragJob?.cancel()
         val velocityY = velocityTracker.calculateVelocity(timeMillis) // px/s (negative = up)
         val velocityProgress = if (maxDragPx > 0f) -velocityY / maxDragPx else 0f
 
