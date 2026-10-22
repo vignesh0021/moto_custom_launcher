@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private var wallpaperZoomController: WallpaperZoomController? = null
     private var curvedEdgeGestureController: CurvedEdgeGestureController? = null
     private var repository: AppRepository? = null
+    private var telemetryManager: com.motorola.launcher.system.SystemTelemetryManager? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         try {
@@ -75,11 +76,17 @@ class MainActivity : ComponentActivity() {
             repository = it
         }
 
+        // 6. Live System Telemetry Engine
+        val telem = com.motorola.launcher.system.SystemTelemetryManager(applicationContext).also {
+            telemetryManager = it
+        }
+
         setContent {
             MotoLauncherTheme {
                 LauncherRoot(
                     repository = repo,
-                    wallpaperZoomController = wpController
+                    wallpaperZoomController = wpController,
+                    telemetryManager = telem
                 )
             }
         }
@@ -115,6 +122,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         curvedEdgeGestureController?.detach()
+        telemetryManager?.release()
         repository?.onDestroy()
     }
 }

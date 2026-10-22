@@ -28,17 +28,21 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.motorola.launcher.ui.theme.MotoCyanAccent
-import com.motorola.launcher.ui.theme.MotoElectricViolet
+import com.motorola.launcher.ui.components.chamferedShape
+import com.motorola.launcher.ui.theme.StarkCyan
+import com.motorola.launcher.ui.theme.StarkCyanBright
+import com.motorola.launcher.ui.theme.StarkHudBorder
+import com.motorola.launcher.ui.theme.StarkHudBorderBright
+import com.motorola.launcher.ui.theme.TextDimHud
 import com.motorola.launcher.ui.theme.TextPrimary
 import com.motorola.launcher.ui.theme.TextSecondary
-import com.motorola.launcher.ui.theme.TextTertiary
 
 /**
- * Cyber-luminous Frosted Glass Search Bar with real-time app telemetry badge.
+ * Holographic Cybernetic Search Bar for STARK OS Application Index.
  */
 @Composable
 fun SearchBarOverlay(
@@ -48,48 +52,45 @@ fun SearchBarOverlay(
     appCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
+    val barShape = chamferedShape(cutSize = 18f)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp)
-            .clip(RoundedCornerShape(26.dp))
+            .height(50.dp)
+            .clip(barShape)
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0x331E293B),
-                        Color(0x260F172A)
+                        Color(0x33060C18),
+                        Color(0x59040810)
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        MotoCyanAccent.copy(alpha = 0.5f),
-                        MotoElectricViolet.copy(alpha = 0.35f)
-                    )
-                ),
-                shape = RoundedCornerShape(26.dp)
+                color = if (query.isNotEmpty()) StarkCyanBright else StarkHudBorder,
+                shape = barShape
             )
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Glowing Cyber Search Lens Icon
+            // Radar Reticle Search Icon
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(26.dp)
                     .clip(CircleShape)
-                    .background(MotoCyanAccent.copy(alpha = 0.15f)),
+                    .background(Color(0x2600F0FF)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "⌕",
-                    color = MotoCyanAccent,
-                    fontSize = 18.sp,
+                    text = "⌖",
+                    color = StarkCyan,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -102,17 +103,21 @@ fun SearchBarOverlay(
                 modifier = Modifier.weight(1f),
                 textStyle = TextStyle(
                     color = TextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Normal
+                    fontSize = 14.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 0.5.sp
                 ),
-                cursorBrush = SolidColor(MotoCyanAccent),
+                cursorBrush = SolidColor(StarkCyan),
                 singleLine = true,
                 decorationBox = { innerTextField ->
                     if (query.isEmpty()) {
                         Text(
-                            text = "Search apps and shortcuts...",
-                            color = TextTertiary,
-                            fontSize = 14.sp
+                            text = "INITIATE QUERY // APP INDEX...",
+                            color = TextDimHud,
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.0.sp
                         )
                     }
                     innerTextField()
@@ -126,9 +131,9 @@ fun SearchBarOverlay(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(26.dp)
+                        .size(24.dp)
                         .clip(CircleShape)
-                        .background(Color(0x26FFFFFF))
+                        .background(Color(0x3300F0FF))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -138,8 +143,8 @@ fun SearchBarOverlay(
                 ) {
                     Text(
                         text = "✕",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
+                        color = StarkCyan,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -148,16 +153,18 @@ fun SearchBarOverlay(
             if (query.isEmpty() && appCount > 0) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0x14FFFFFF))
-                        .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0x1F00F0FF))
+                        .border(1.dp, StarkHudBorder, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "$appCount",
-                        color = TextTertiary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = "TOTAL: $appCount",
+                        color = StarkCyan,
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp
                     )
                 }
             }

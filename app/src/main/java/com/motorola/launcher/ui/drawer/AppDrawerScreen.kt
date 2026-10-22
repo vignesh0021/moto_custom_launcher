@@ -316,7 +316,7 @@ fun AppDrawerScreen(
 }
 
 /**
- * Category Filter Pill Chip with subtle neon border.
+ * Holographic Category Filter Pill Chip with technical border and monospace font.
  */
 @Composable
 private fun CategoryChip(
@@ -325,15 +325,15 @@ private fun CategoryChip(
     onClick: () -> Unit
 ) {
     val view = LocalView.current
-    val bgColor = if (isSelected) MotoCyanAccent.copy(alpha = 0.2f) else Color(0x14FFFFFF)
-    val borderColor = if (isSelected) MotoCyanAccent else Color(0x22FFFFFF)
-    val textColor = if (isSelected) MotoCyanAccent else TextSecondary
+    val bgColor = if (isSelected) com.motorola.launcher.ui.theme.StarkCyan.copy(alpha = 0.2f) else Color(0x14080F1D)
+    val borderColor = if (isSelected) com.motorola.launcher.ui.theme.StarkCyanBright else com.motorola.launcher.ui.theme.StarkHudBorder
+    val textColor = if (isSelected) com.motorola.launcher.ui.theme.StarkCyanBright else com.motorola.launcher.ui.theme.TextSecondary
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -342,21 +342,22 @@ private fun CategoryChip(
                     onClick()
                 }
             )
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
-            text = label,
+            text = label.uppercase(),
             color = textColor,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+            fontSize = 11.sp,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            letterSpacing = 1.0.sp
         )
     }
 }
 
 /**
- * Luminous Quick Launch shelf with customize button and long-press support.
+ * Holographic Quick Launch shelf with customize button and long-press support.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QuickLaunchShelf(
     apps: List<AppItem>,
@@ -368,9 +369,9 @@ private fun QuickLaunchShelf(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color(0x14FFFFFF))
-            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0x1F050B16))
+            .border(1.dp, com.motorola.launcher.ui.theme.StarkHudBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         // Shelf Header: Title + Customize Button
@@ -382,9 +383,10 @@ private fun QuickLaunchShelf(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "QUICK ACCESS",
-                color = MotoCyanAccent,
+                text = "PRIORITY SLOTS // FREQUENT",
+                color = com.motorola.launcher.ui.theme.StarkCyan,
                 fontSize = 10.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp
             )
@@ -392,9 +394,9 @@ private fun QuickLaunchShelf(
             // Customize Quick Access Pill
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x1A00E5FF))
-                    .border(1.dp, MotoCyanAccent.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0x1F00F0FF))
+                    .border(1.dp, com.motorola.launcher.ui.theme.StarkHudBorder, RoundedCornerShape(6.dp))
                     .clickable {
                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                         onCustomizeClick()
@@ -403,9 +405,10 @@ private fun QuickLaunchShelf(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "⚙️ CUSTOMIZE",
-                    color = MotoCyanAccent,
+                    text = "⚙ CONFIG",
+                    color = com.motorola.launcher.ui.theme.StarkCyan,
                     fontSize = 10.sp,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -420,9 +423,10 @@ private fun QuickLaunchShelf(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "+ Tap Customize to select Quick Access apps",
-                    color = TextTertiary,
-                    fontSize = 12.sp
+                    text = "+ Tap Config to assign Priority apps",
+                    color = com.motorola.launcher.ui.theme.TextDimHud,
+                    fontSize = 11.sp,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                 )
             }
         } else {
@@ -432,60 +436,19 @@ private fun QuickLaunchShelf(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 for (app in apps.take(5)) {
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val isPressed by interactionSource.collectIsPressedAsState()
-                    val scale by animateFloatAsState(
-                        targetValue = if (isPressed) 0.88f else 1.0f,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                        label = "quickAppScale"
+                    com.motorola.launcher.ui.components.FuturisticAppIcon(
+                        app = app,
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onAppClick(app)
+                        },
+                        onLongClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            onAppLongClick(app)
+                        },
+                        iconSize = 44.dp,
+                        showLabel = false
                     )
-
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
-                            .clip(CircleShape)
-                            .border(
-                                width = 1.5.dp,
-                                brush = Brush.sweepGradient(
-                                    listOf(MotoCyanAccent, MotoElectricViolet, MotoCyanAccent)
-                                ),
-                                shape = CircleShape
-                            )
-                            .combinedClickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                    onAppClick(app)
-                                },
-                                onLongClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                    onAppLongClick(app)
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (app.iconBitmap != null) {
-                            Image(
-                                bitmap = app.iconBitmap,
-                                contentDescription = app.label,
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                            )
-                        } else {
-                            Text(
-                                text = app.label.take(1).uppercase(),
-                                color = MotoCyanAccent,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -493,98 +456,20 @@ private fun QuickLaunchShelf(
 }
 
 /**
- * Tactile App Item with spring squeeze bounce and haptic click & long-press support.
+ * Holographic Drawer App Item delegating to FuturisticAppIcon.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DrawerAppItem(
     app: AppItem,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val view = LocalView.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "drawerItemScale"
+    com.motorola.launcher.ui.components.FuturisticAppIcon(
+        app = app,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        iconSize = 48.dp,
+        showLabel = true
     )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(RoundedCornerShape(14.dp))
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onClick()
-                },
-                onLongClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    onLongClick()
-                }
-            )
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // App Icon with Hardware Bitmap or Cyber Fallback
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (app.iconBitmap != null) {
-                Image(
-                    bitmap = app.iconBitmap,
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(Color(0x4D00E5FF), Color(0x1A7B2CBF))
-                            )
-                        )
-                        .border(1.dp, MotoCyanAccent.copy(alpha = 0.4f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = app.label.take(1).uppercase(),
-                        color = MotoCyanAccent,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = app.label,
-            color = TextSecondary,
-            fontSize = 11.5.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
-    }
 }
+

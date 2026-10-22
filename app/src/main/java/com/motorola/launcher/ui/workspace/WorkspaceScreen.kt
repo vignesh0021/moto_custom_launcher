@@ -1,16 +1,10 @@
 package com.motorola.launcher.ui.workspace
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,14 +16,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,32 +29,38 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.motorola.launcher.system.SystemTelemetryState
+import com.motorola.launcher.ui.components.FuturisticAppIcon
+import com.motorola.launcher.ui.components.QuickControlsPanel
+import com.motorola.launcher.ui.components.chamferedShape
 import com.motorola.launcher.ui.model.AppItem
-import com.motorola.launcher.ui.theme.MotoCyanAccent
-import com.motorola.launcher.ui.theme.MotoCyanGlow
-import com.motorola.launcher.ui.theme.MotoDarkSurface
-import com.motorola.launcher.ui.theme.MotoElectricViolet
-import com.motorola.launcher.ui.theme.MotoGlassBorder
-import com.motorola.launcher.ui.theme.TextPrimary
+import com.motorola.launcher.ui.theme.StarkCyan
+import com.motorola.launcher.ui.theme.StarkCyanBright
+import com.motorola.launcher.ui.theme.StarkElectricBlue
+import com.motorola.launcher.ui.theme.StarkHudBorder
+import com.motorola.launcher.ui.theme.StarkHudBorderBright
+import com.motorola.launcher.ui.theme.TextDimHud
 import com.motorola.launcher.ui.theme.TextSecondary
-import com.motorola.launcher.ui.theme.TextTertiary
 import kotlinx.collections.immutable.ImmutableList
 
 /**
- * Main Home Workspace composable.
- * Features ambient curved waterfall edge highlights, floating 3D glass dock,
- * and tactile micro-spring icon animations.
+ * Main Home Workspace Composable: "STARK OS — JARVIS Edition".
+ * Features Central Arc Reactor with live battery mapping, holographic digital clock,
+ * system telemetry readouts, quick settings control bar, and tactical application dock.
  */
 @Composable
 fun WorkspaceScreen(
     dockApps: ImmutableList<AppItem>,
+    telemetry: SystemTelemetryState,
     progressProvider: () -> Float,
     onAppClick: (AppItem) -> Unit,
     onAppLongClick: (AppItem) -> Unit,
     onOpenDrawerClick: () -> Unit,
+    onOpenDiagnostics: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -86,11 +83,11 @@ fun WorkspaceScreen(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .fillMaxHeight(0.7f)
-                .width(4.dp)
+                .width(3.dp)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            MotoCyanAccent.copy(alpha = 0.45f),
+                            StarkCyan.copy(alpha = 0.5f),
                             Color.Transparent
                         )
                     )
@@ -102,180 +99,162 @@ fun WorkspaceScreen(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight(0.7f)
-                .width(4.dp)
+                .width(3.dp)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            MotoElectricViolet.copy(alpha = 0.45f)
+                            StarkElectricBlue.copy(alpha = 0.5f)
                         )
                     )
                 )
         )
 
-        // Top Clock & Glanceable Information
-        ClockWidget(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 20.dp)
-        )
-
-        // Bottom Workspace Dock Area
+        // Primary Vertical Command Center Layout
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Luminous Swipe Up Pill & Micro-Chevron
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0x1AFFFFFF))
-                    .border(1.dp, MotoCyanAccent.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onOpenDrawerClick
-                    )
-                    .padding(horizontal = 14.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "▲",
-                    color = MotoCyanAccent.copy(alpha = 0.85f),
-                    fontSize = 9.sp
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "APPS",
-                    color = TextSecondary.copy(alpha = 0.85f),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp
-                )
-            }
+            // TOP SECTION: Digital Holographic Clock & Protocol Header
+            DigitalClock(
+                telemetry = telemetry,
+                modifier = Modifier.padding(top = 8.dp)
+            )
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Premium Floating 3D Frosted Glass Dock Container
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0x331E293B),
-                                Color(0x4D0F172A)
-                            )
-                        )
-                    )
-                    .border(
-                        width = 1.dp,
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MotoCyanAccent.copy(alpha = 0.65f),
-                                MotoElectricViolet.copy(alpha = 0.65f),
-                                MotoCyanAccent.copy(alpha = 0.65f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(32.dp)
-                    )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            // CENTER SECTION: Interactive Procedural Arc Reactor Core
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                ReactorCore(
+                    telemetry = telemetry,
+                    onCoreClick = onOpenDiagnostics,
+                    size = 230.dp
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Tactical System Metrics Status Strip
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0x1F050B16))
+                        .border(1.dp, StarkHudBorder.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
                 ) {
-                    for (item in dockApps.take(5)) {
-                        DockIconItem(
-                            app = item,
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                onAppClick(item)
-                            },
-                            onLongClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                onAppLongClick(item)
-                            }
-                        )
-                    }
+                    Text(
+                        text = "MEM: ${telemetry.ramUsedFormatted}",
+                        color = StarkCyanBright,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.8.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "•", color = TextDimHud, fontSize = 10.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "STORAGE: ${telemetry.storageFreeFormatted} FREE",
+                        color = TextSecondary,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.8.sp
+                    )
                 }
             }
-        }
-    }
-}
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-private fun DockIconItem(
-    app: AppItem,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    // Smooth physical spring bounce on touch
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "dockIconScale"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(56.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(CircleShape)
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (app.iconBitmap != null) {
-            Image(
-                bitmap = app.iconBitmap,
-                contentDescription = app.label,
+            // BOTTOM SECTION: Quick Controls, Swipe Pill & Tactical Dock
+            Column(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-            )
-        } else {
-            // High-contrast cyber-glow avatar
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color(0x6600E5FF),
-                                Color(0x227B2CBF)
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Quick System Settings Bar
+                QuickControlsPanel(
+                    onOpenDiagnostics = onOpenDiagnostics,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+
+                // Holographic Drawer Invocation Banner
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x1F00F0FF))
+                        .border(1.dp, StarkHudBorder, RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                onOpenDrawerClick()
+                            }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "▲",
+                        color = StarkCyan,
+                        fontSize = 9.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "ALL APPLICATIONS",
+                        color = StarkCyan,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.8.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Floating Tactical Dock Container
+                val dockShape = chamferedShape(cutSize = 20f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .clip(dockShape)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0x33060C18),
+                                    Color(0x5903060C)
+                                )
                             )
                         )
-                    )
-                    .border(1.dp, MotoCyanAccent.copy(alpha = 0.5f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = app.label.take(1).uppercase(),
-                    color = MotoCyanAccent,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                        .border(
+                            width = 1.dp,
+                            color = StarkHudBorderBright,
+                            shape = dockShape
+                        )
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        for (item in dockApps.take(5)) {
+                            FuturisticAppIcon(
+                                app = item,
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    onAppClick(item)
+                                },
+                                onLongClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    onAppLongClick(item)
+                                },
+                                iconSize = 46.dp,
+                                showLabel = false
+                            )
+                        }
+                    }
+                }
             }
         }
     }

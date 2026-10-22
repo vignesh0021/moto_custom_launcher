@@ -64,5 +64,6 @@
 -keep class com.motorola.launcher.MainActivity { *; }
 -keep class com.motorola.launcher.LauncherApplication { *; }
 -keep class com.motorola.launcher.data.icon.IconCacheHeader { *; }
+-keep class com.motorola.launcher.system.SystemTelemetryState { *; }
 
 

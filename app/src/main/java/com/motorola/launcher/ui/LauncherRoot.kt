@@ -12,8 +12,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import com.motorola.launcher.data.repository.AppRepository
+import com.motorola.launcher.system.SystemTelemetryManager
 import com.motorola.launcher.system.WallpaperZoomController
 import com.motorola.launcher.ui.dialog.AppContextDialog
+import com.motorola.launcher.ui.dialog.JarvisDashboardSheet
 import com.motorola.launcher.ui.dialog.QuickAccessCustomizerDialog
 import com.motorola.launcher.ui.drawer.AppDrawerScreen
 import com.motorola.launcher.ui.gesture.drawerSwipeGesture
@@ -23,18 +25,20 @@ import com.motorola.launcher.ui.workspace.WorkspaceScreen
 import kotlinx.collections.immutable.toImmutableList
 
 /**
- * Root Composable orchestrating Workspace, Drawer, App Context Menus,
- * Quick Access Customizer, and gesture physics.
+ * Root Composable orchestrating Workspace, Drawer, JARVIS Holographic Dashboard,
+ * App Context Menus, Quick Access Customizer, and gesture physics for STARK OS.
  */
 @Composable
 fun LauncherRoot(
     repository: AppRepository,
     wallpaperZoomController: WallpaperZoomController,
+    telemetryManager: SystemTelemetryManager,
     modifier: Modifier = Modifier
 ) {
     val allApps by repository.appsState.collectAsState()
     val quickAccessKeys by repository.preferences.quickAccessKeys.collectAsState()
     val dockKeys by repository.preferences.dockKeys.collectAsState()
+    val telemetry by telemetryManager.telemetryState.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by remember(searchQuery) { repository.searchApps(searchQuery) }.collectAsState(initial = emptyList<AppItem>().toImmutableList())
@@ -69,13 +73,17 @@ fun LauncherRoot(
     // State for Quick Access Customizer sheet
     var showQuickAccessCustomizer by remember { mutableStateOf(false) }
 
+    // State for JARVIS Tactical Diagnostic Dashboard
+    var showJarvisDashboard by remember { mutableStateOf(false) }
+
     val gestureState = rememberDrawerGestureState(wallpaperZoomController)
 
-    // Back button closes dialogs or app drawer before allowing exit
-    BackHandler(enabled = selectedAppContextApp != null || showQuickAccessCustomizer || gestureState.isDrawerVisible) {
+    // Back button closes dialogs, dashboard, or app drawer before allowing exit
+    BackHandler(enabled = selectedAppContextApp != null || showQuickAccessCustomizer || showJarvisDashboard || gestureState.isDrawerVisible) {
         when {
             selectedAppContextApp != null -> selectedAppContextApp = null
             showQuickAccessCustomizer -> showQuickAccessCustomizer = false
+            showJarvisDashboard -> showJarvisDashboard = false
             searchQuery.isNotEmpty() -> searchQuery = ""
             else -> gestureState.close()
         }
@@ -89,13 +97,15 @@ fun LauncherRoot(
             .fillMaxSize()
             .drawerSwipeGesture(gestureState, maxDragPx)
 
-        // Workspace Layer
+        // Workspace Layer (STARK OS Command Center)
         WorkspaceScreen(
             dockApps = dockApps,
+            telemetry = telemetry,
             progressProvider = { gestureState.progress },
             onAppClick = { item -> repository.launchApp(item) },
             onAppLongClick = { item -> selectedAppContextApp = item },
             onOpenDrawerClick = { gestureState.open() },
+            onOpenDiagnostics = { showJarvisDashboard = true },
             modifier = gestureModifier
         )
 
@@ -117,6 +127,14 @@ fun LauncherRoot(
                 onCustomizeQuickAccessClick = { showQuickAccessCustomizer = true },
                 onCloseDrawer = { gestureState.close() },
                 modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // JARVIS Holographic Diagnostic Modal
+        if (showJarvisDashboard) {
+            JarvisDashboardSheet(
+                telemetry = telemetry,
+                onDismiss = { showJarvisDashboard = false }
             )
         }
 
