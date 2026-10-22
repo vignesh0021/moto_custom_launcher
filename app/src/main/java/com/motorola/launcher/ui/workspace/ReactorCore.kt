@@ -45,6 +45,8 @@ import com.motorola.launcher.ui.theme.StarkCyanBright
 import com.motorola.launcher.ui.theme.StarkCyanGlow
 import com.motorola.launcher.ui.theme.StarkEmerald
 import com.motorola.launcher.ui.theme.StarkGold
+import com.motorola.launcher.ui.theme.StarkHudBorder
+import com.motorola.launcher.ui.theme.StarkHudBorderBright
 import com.motorola.launcher.ui.theme.StarkIceBlue
 import com.motorola.launcher.ui.theme.StarkReactorRed
 import com.motorola.launcher.ui.theme.StarkReticleColor
