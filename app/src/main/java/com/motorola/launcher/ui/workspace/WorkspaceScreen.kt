@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +68,7 @@ fun WorkspaceScreen(
     dockApps: ImmutableList<AppItem>,
     progressProvider: () -> Float,
     onAppClick: (AppItem) -> Unit,
+    onAppLongClick: (AppItem) -> Unit,
     onOpenDrawerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -212,6 +214,10 @@ fun WorkspaceScreen(
                             onClick = {
                                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                                 onAppClick(item)
+                            },
+                            onLongClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                onAppLongClick(item)
                             }
                         )
                     }
@@ -221,10 +227,12 @@ fun WorkspaceScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun DockIconItem(
     app: AppItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -247,10 +255,11 @@ private fun DockIconItem(
                 scaleY = scale
             }
             .clip(CircleShape)
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
+                onLongClick = onLongClick
             ),
         contentAlignment = Alignment.Center
     ) {

@@ -5,12 +5,14 @@ import android.content.Intent
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import android.provider.Settings
 import android.util.Log
 import com.motorola.launcher.data.icon.HardwareIconManager
 import com.motorola.launcher.ui.model.AppItem
@@ -36,6 +38,8 @@ class AppRepository(
     private val context: Context,
     val iconManager: HardwareIconManager = HardwareIconManager(context)
 ) {
+    val preferences = LauncherPreferences(context)
+
     companion object {
         private const val TAG = "AppRepository"
     }
@@ -239,6 +243,45 @@ class AppRepository(
             )
         } catch (t: Throwable) {
             Log.e(TAG, "Failed launching ${item.componentKey}: ${t.message}")
+        }
+    }
+
+    /**
+     * Opens system App Info page for the given app.
+     */
+    fun openAppInfo(item: AppItem) {
+        try {
+            launcherApps?.startAppDetailsActivity(
+                item.componentName,
+                item.userHandle,
+                null,
+                null
+            )
+        } catch (e: Throwable) {
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", item.packageName, null)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to open app info: ${t.message}")
+            }
+        }
+    }
+
+    /**
+     * Requests application uninstallation.
+     */
+    fun requestUninstall(item: AppItem) {
+        try {
+            val intent = Intent(Intent.ACTION_DELETE).apply {
+                data = Uri.fromParts("package", item.packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to request uninstall: ${t.message}")
         }
     }
 

@@ -5,12 +5,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -65,8 +65,6 @@ import com.motorola.launcher.ui.model.AppItem
 import com.motorola.launcher.ui.theme.MotoCyanAccent
 import com.motorola.launcher.ui.theme.MotoDarkSurface
 import com.motorola.launcher.ui.theme.MotoElectricViolet
-import com.motorola.launcher.ui.theme.MotoEmerald
-import com.motorola.launcher.ui.theme.MotoGlassBorder
 import com.motorola.launcher.ui.theme.TextPrimary
 import com.motorola.launcher.ui.theme.TextSecondary
 import com.motorola.launcher.ui.theme.TextTertiary
@@ -78,18 +76,21 @@ private val CATEGORIES = listOf("All", "Favorites", "Communication", "Media", "T
 
 /**
  * High-framerate App Drawer composable.
- * Features unblocked 144Hz scroll, Quick Launch luminous shelf, category filter chips,
- * and holographic A-Z edge fast scrubber.
+ * Features unblocked 144Hz scroll, customizable Quick Launch shelf, category filter chips,
+ * and holographic A-Z edge fast scrubber with long-press App Info support.
  */
 @Composable
 fun AppDrawerScreen(
     apps: ImmutableList<AppItem>,
+    quickAccessApps: ImmutableList<AppItem>,
     searchQuery: String,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     progressProvider: () -> Float,
     maxDragPx: Float,
     onAppClick: (AppItem) -> Unit,
+    onAppLongClick: (AppItem) -> Unit,
+    onCustomizeQuickAccessClick: () -> Unit,
     onCloseDrawer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -98,12 +99,12 @@ fun AppDrawerScreen(
     var selectedCategory by remember { mutableStateOf("All") }
 
     // Filter apps based on category if search query is empty
-    val categorizedApps = remember(apps, selectedCategory, searchQuery) {
+    val categorizedApps = remember(apps, selectedCategory, searchQuery, quickAccessApps) {
         if (searchQuery.isNotEmpty()) {
             apps
         } else {
             when (selectedCategory) {
-                "Favorites" -> apps.take(8).toImmutableList()
+                "Favorites" -> quickAccessApps.ifEmpty { apps.take(8).toImmutableList() }
                 "Communication" -> apps.filter { app ->
                     val k = (app.packageName + " " + app.label).lowercase()
                     k.contains("phone") || k.contains("dialer") || k.contains("message") ||
@@ -249,12 +250,14 @@ fun AppDrawerScreen(
                 }
             }
 
-            // Quick Access / Favorite Apps Row (visible when search is empty and category is "All")
-            if (searchQuery.isEmpty() && selectedCategory == "All" && apps.isNotEmpty()) {
+            // Quick Access / Favorite Apps Shelf (visible when search is empty and category is "All")
+            if (searchQuery.isEmpty() && selectedCategory == "All") {
                 Spacer(modifier = Modifier.height(14.dp))
                 QuickLaunchShelf(
-                    apps = apps.take(5),
-                    onAppClick = onAppClick
+                    apps = quickAccessApps,
+                    onAppClick = onAppClick,
+                    onAppLongClick = onAppLongClick,
+                    onCustomizeClick = onCustomizeQuickAccessClick
                 )
                 Spacer(modifier = Modifier.height(10.dp))
             } else {
@@ -283,7 +286,8 @@ fun AppDrawerScreen(
                     ) { appItem ->
                         DrawerAppItem(
                             app = appItem,
-                            onClick = { onAppClick(appItem) }
+                            onClick = { onAppClick(appItem) },
+                            onLongClick = { onAppLongClick(appItem) }
                         )
                     }
                 }
@@ -350,12 +354,15 @@ private fun CategoryChip(
 }
 
 /**
- * Luminous Quick Launch shelf with glowing outer rings.
+ * Luminous Quick Launch shelf with customize button and long-press support.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QuickLaunchShelf(
     apps: List<AppItem>,
-    onAppClick: (AppItem) -> Unit
+    onAppClick: (AppItem) -> Unit,
+    onAppLongClick: (AppItem) -> Unit,
+    onCustomizeClick: () -> Unit
 ) {
     val view = LocalView.current
     Column(
@@ -366,69 +373,118 @@ private fun QuickLaunchShelf(
             .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(20.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Text(
-            text = "QUICK ACCESS",
-            color = MotoCyanAccent,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-        )
-
+        // Shelf Header: Title + Customize Button
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, end = 2.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            for (app in apps) {
-                val interactionSource = remember { MutableInteractionSource() }
-                val isPressed by interactionSource.collectIsPressedAsState()
-                val scale by animateFloatAsState(
-                    targetValue = if (isPressed) 0.88f else 1.0f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                    label = "quickAppScale"
-                )
+            Text(
+                text = "QUICK ACCESS",
+                color = MotoCyanAccent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp
+            )
 
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                        .clip(CircleShape)
-                        .border(
-                            width = 1.5.dp,
-                            brush = Brush.sweepGradient(
-                                listOf(MotoCyanAccent, MotoElectricViolet, MotoCyanAccent)
-                            ),
-                            shape = CircleShape
-                        )
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                onAppClick(app)
+            // Customize Quick Access Pill
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0x1A00E5FF))
+                    .border(1.dp, MotoCyanAccent.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    .clickable {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onCustomizeClick()
+                    }
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "⚙️ CUSTOMIZE",
+                    color = MotoCyanAccent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        if (apps.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onCustomizeClick() }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "+ Tap Customize to select Quick Access apps",
+                    color = TextTertiary,
+                    fontSize = 12.sp
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                for (app in apps.take(5)) {
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.88f else 1.0f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "quickAppScale"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
                             }
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (app.iconBitmap != null) {
-                        Image(
-                            bitmap = app.iconBitmap,
-                            contentDescription = app.label,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Text(
-                            text = app.label.take(1).uppercase(),
-                            color = MotoCyanAccent,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                            .clip(CircleShape)
+                            .border(
+                                width = 1.5.dp,
+                                brush = Brush.sweepGradient(
+                                    listOf(MotoCyanAccent, MotoElectricViolet, MotoCyanAccent)
+                                ),
+                                shape = CircleShape
+                            )
+                            .combinedClickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    onAppClick(app)
+                                },
+                                onLongClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    onAppLongClick(app)
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (app.iconBitmap != null) {
+                            Image(
+                                bitmap = app.iconBitmap,
+                                contentDescription = app.label,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Text(
+                                text = app.label.take(1).uppercase(),
+                                color = MotoCyanAccent,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -437,12 +493,14 @@ private fun QuickLaunchShelf(
 }
 
 /**
- * Tactile App Item with spring squeeze bounce and haptic click.
+ * Tactile App Item with spring squeeze bounce and haptic click & long-press support.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DrawerAppItem(
     app: AppItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val view = LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -465,12 +523,16 @@ private fun DrawerAppItem(
                 scaleY = scale
             }
             .clip(RoundedCornerShape(14.dp))
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     onClick()
+                },
+                onLongClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    onLongClick()
                 }
             )
             .padding(vertical = 4.dp),
