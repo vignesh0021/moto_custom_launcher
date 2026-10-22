@@ -53,7 +53,7 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Run Unit Tests
         run: |
-          ./gradlew testReleaseUnitTest --stacktrace
+          ./gradlew :app:testReleaseUnitTest --stacktrace
 
       - name: Upload Unit Test Reports
         if: always()
@@ -68,7 +68,7 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Assemble Debug and Release APKs
         run: |
-          ./gradlew assembleDebug assembleRelease \
+          ./gradlew :app:assembleDebug :app:assembleRelease \
             -Pandroid.enableR8.fullMode=true \
             --stacktrace
 
