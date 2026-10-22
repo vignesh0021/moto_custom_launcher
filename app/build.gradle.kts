@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.motorola.launcher"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.motorola.launcher"

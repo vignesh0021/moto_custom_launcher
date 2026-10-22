@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.motorola.launcher.benchmark"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 34
