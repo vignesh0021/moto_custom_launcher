@@ -8,20 +8,23 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import com.motorola.launcher.system.WallpaperZoomController
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
  * 100% Stable Gesture Controller for App Drawer Swipe Physics.
  * Uses Compose Animatable for hardware-timed frame pacing without recomposition spikes.
+ * Zero-allocation pointer loop: directly calls snapTo within the pointer input coroutine.
  */
 @Stable
 class DrawerGestureState(
@@ -30,6 +33,11 @@ class DrawerGestureState(
     private val wallpaperZoomController: WallpaperZoomController?
 ) {
     private val velocityTracker = VelocityTracker360Hz()
+    private var animationJob: Job? = null
+
+    // Discrete visibility state to prevent root recomposition on every fractional progress frame
+    var isDrawerVisible by mutableStateOf(false)
+        private set
 
     // 0.0f = Workspace visible (Drawer closed)
     // 1.0f = Drawer fully expanded
@@ -37,11 +45,16 @@ class DrawerGestureState(
         get() = animatable.value
 
     fun onDragStart(downTimeMillis: Long, y: Float) {
+        animationJob?.cancel()
+        isDrawerVisible = true
         velocityTracker.reset()
         velocityTracker.addPoint(downTimeMillis, y)
     }
 
-    fun onDrag(timeMillis: Long, y: Float, deltaY: Float, maxDragPx: Float) {
+    /**
+     * Called directly within the PointerInputScope coroutine for zero-allocation 360Hz updates.
+     */
+    suspend fun onDrag(timeMillis: Long, y: Float, deltaY: Float, maxDragPx: Float) {
         velocityTracker.addPoint(timeMillis, y)
         if (maxDragPx <= 0f) return
 
@@ -49,11 +62,9 @@ class DrawerGestureState(
         val deltaProgress = -deltaY / maxDragPx
         val newProgress = (animatable.value + deltaProgress).coerceIn(0f, 1f)
 
-        // Direct snap without animation overhead
-        scope.launch {
-            animatable.snapTo(newProgress)
-            wallpaperZoomController?.updateDrawerProgress(newProgress)
-        }
+        // Direct snap in current coroutine - zero allocations per pointer move event
+        animatable.snapTo(newProgress)
+        wallpaperZoomController?.updateDrawerProgress(newProgress)
     }
 
     fun onDragEnd(timeMillis: Long, maxDragPx: Float) {
@@ -69,23 +80,32 @@ class DrawerGestureState(
             else -> 0.0f
         }
 
-        scope.launch {
-            animatable.animateTo(
-                targetValue = target,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
-                initialVelocity = velocityProgress
-            ) {
-                // Update live wallpaper zoom directly on each frame callback
-                wallpaperZoomController?.updateDrawerProgress(value)
+        animationJob?.cancel()
+        animationJob = scope.launch {
+            try {
+                animatable.animateTo(
+                    targetValue = target,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    initialVelocity = velocityProgress
+                ) {
+                    wallpaperZoomController?.updateDrawerProgress(value)
+                }
+            } finally {
+                if (target == 0.0f && animatable.value <= 0.001f) {
+                    isDrawerVisible = false
+                    wallpaperZoomController?.updateDrawerProgress(0.0f)
+                }
             }
         }
     }
 
     fun open() {
-        scope.launch {
+        animationJob?.cancel()
+        isDrawerVisible = true
+        animationJob = scope.launch {
             animatable.animateTo(
                 targetValue = 1.0f,
                 animationSpec = spring(
@@ -99,15 +119,23 @@ class DrawerGestureState(
     }
 
     fun close() {
-        scope.launch {
-            animatable.animateTo(
-                targetValue = 0.0f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ) {
-                wallpaperZoomController?.updateDrawerProgress(value)
+        animationJob?.cancel()
+        animationJob = scope.launch {
+            try {
+                animatable.animateTo(
+                    targetValue = 0.0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ) {
+                    wallpaperZoomController?.updateDrawerProgress(value)
+                }
+            } finally {
+                if (animatable.value <= 0.001f) {
+                    isDrawerVisible = false
+                    wallpaperZoomController?.updateDrawerProgress(0.0f)
+                }
             }
         }
     }
@@ -133,7 +161,7 @@ fun Modifier.drawerSwipeGesture(
 ): Modifier = this.pointerInput(state, maxDragPx) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-        var pointerId = down.id
+        val pointerId = down.id
         var lastY = down.position.y
         state.onDragStart(down.uptimeMillis, lastY)
 

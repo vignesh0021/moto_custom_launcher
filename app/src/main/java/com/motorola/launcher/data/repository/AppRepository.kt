@@ -18,21 +18,35 @@ import com.motorola.launcher.data.icon.HardwareIconManager
 import com.motorola.launcher.ui.model.AppItem
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
  * High-performance, crash-resilient Repository managing installed launcher apps
  * and hardware-backed icon hydration via LauncherApps.Callback.
+ *
+ * Guarantees:
+ * - Event coalescing: Batches rapid package add/remove/change events within a 250ms debounce window.
+ * - Non-swallowed cancellations: CancellationException is rethrown to maintain coroutine structure.
+ * - Deterministic lifecycle: Cancels background scopes and unregisters callbacks on destroy.
+ * - Responsive search: Offloaded to Dispatchers.Default with prefix ranking.
  */
 class AppRepository(
     private val context: Context,
@@ -42,10 +56,13 @@ class AppRepository(
 
     companion object {
         private const val TAG = "AppRepository"
+        private const val PACKAGE_COALESCE_DELAY_MS = 250L
     }
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        Log.e(TAG, "Coroutine exception in AppRepository", throwable)
+        if (throwable !is CancellationException) {
+            Log.e(TAG, "Coroutine exception in AppRepository", throwable)
+        }
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + exceptionHandler)
     private val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
@@ -54,25 +71,29 @@ class AppRepository(
     private val _appsState = MutableStateFlow<ImmutableList<AppItem>>(emptyList<AppItem>().toImmutableList())
     val appsState: StateFlow<ImmutableList<AppItem>> = _appsState.asStateFlow()
 
+    private var reloadJob: Job? = null
+    private var hydrationJob: Job? = null
+    private val reloadMutex = Mutex()
+
     private val launcherAppsCallback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
-            scope.launch { reloadAll() }
+            scheduleReload()
         }
 
         override fun onPackageRemoved(packageName: String, user: UserHandle) {
-            scope.launch { removePackage(packageName, user) }
+            scheduleReload()
         }
 
         override fun onPackageChanged(packageName: String, user: UserHandle) {
-            scope.launch { reloadAll() }
+            scheduleReload()
         }
 
         override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            scope.launch { reloadAll() }
+            scheduleReload()
         }
 
         override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            scope.launch { reloadAll() }
+            scheduleReload()
         }
 
         override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<android.content.pm.ShortcutInfo>, user: UserHandle) {
@@ -88,9 +109,30 @@ class AppRepository(
             Log.e(TAG, "Failed registering LauncherApps callback", e)
         }
 
-        // Cold start initial load
+        // Initial load without debounce delay
+        scheduleReload(delayMs = 0L)
+    }
+
+    /**
+     * Coalesces rapid package change callbacks into a single reload pass.
+     */
+    fun scheduleReload(delayMs: Long = PACKAGE_COALESCE_DELAY_MS) {
         scope.launch {
-            reloadAll()
+            reloadMutex.withLock {
+                reloadJob?.cancel()
+                reloadJob = scope.launch {
+                    try {
+                        if (delayMs > 0) {
+                            delay(delayMs)
+                        }
+                        reloadAll()
+                    } catch (c: CancellationException) {
+                        throw c
+                    } catch (e: Throwable) {
+                        Log.e(TAG, "Error executing scheduled reload: ${e.message}", e)
+                    }
+                }
+            }
         }
     }
 
@@ -101,6 +143,8 @@ class AppRepository(
         try {
             val userProfiles = try {
                 userManager?.userProfiles ?: listOf(Process.myUserHandle())
+            } catch (c: CancellationException) {
+                throw c
             } catch (e: Throwable) {
                 Log.w(TAG, "Could not fetch userProfiles, falling back to current user: ${e.message}")
                 listOf(Process.myUserHandle())
@@ -111,12 +155,16 @@ class AppRepository(
             for (user in userProfiles) {
                 val userSerial = try {
                     userManager?.getSerialNumberForUser(user) ?: 0L
+                } catch (c: CancellationException) {
+                    throw c
                 } catch (e: Throwable) {
                     0L
                 }
 
                 val activities: List<LauncherActivityInfo> = try {
                     launcherApps?.getActivityList(null, user) ?: emptyList()
+                } catch (c: CancellationException) {
+                    throw c
                 } catch (e: Throwable) {
                     Log.e(TAG, "Failed reading activities for user $user: ${e.message}")
                     emptyList()
@@ -127,7 +175,7 @@ class AppRepository(
                         val component = info.componentName
                         val componentKey = "${component.packageName}/${component.className}#$userSerial"
                         val label = info.label?.toString() ?: component.packageName
-                        val installTime = try { info.firstInstallTime } catch (e: Throwable) { 0L }
+                        val installTime = try { info.firstInstallTime } catch (_: Throwable) { 0L }
                         val iconKey = "icon_${component.packageName}_${component.className}_$installTime"
 
                         // Check instant memory cache hit for icon; if absent, will load in background
@@ -143,6 +191,8 @@ class AppRepository(
                                 iconBitmap = cachedBitmap
                             )
                         )
+                    } catch (c: CancellationException) {
+                        throw c
                     } catch (e: Throwable) {
                         Log.e(TAG, "Error indexing activity: ${e.message}")
                     }
@@ -155,27 +205,21 @@ class AppRepository(
 
             // Pre-warm icons asynchronously
             hydrateIconsInBackground(appItems)
+        } catch (c: CancellationException) {
+            throw c
         } catch (e: Throwable) {
             Log.e(TAG, "Fatal error in reloadAll: ${e.message}", e)
         }
     }
 
-    private suspend fun removePackage(packageName: String, user: UserHandle) = withContext(Dispatchers.Default) {
-        try {
-            val current = _appsState.value.filterNot { it.packageName == packageName && it.userHandle == user }
-            _appsState.value = current.toImmutableList()
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error in removePackage: ${e.message}")
-        }
-    }
-
     /**
-     * Sub-millisecond prefix-ranked search query executed against in-memory index.
+     * Sub-millisecond prefix-ranked search query executed against in-memory index on Dispatchers.Default.
      */
-    fun searchApps(query: String): Flow<ImmutableList<AppItem>> {
+    fun searchApps(query: String): Flow<ImmutableList<AppItem>> = flow {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
-            return flowOf(_appsState.value)
+            emit(_appsState.value)
+            return@flow
         }
         val currentApps = _appsState.value
         val filtered = currentApps.filter {
@@ -186,38 +230,46 @@ class AppRepository(
             { it.label.lowercase() }
         )).toImmutableList()
 
-        return flowOf(filtered)
-    }
+        emit(filtered)
+    }.flowOn(Dispatchers.Default)
 
     private fun hydrateIconsInBackground(items: List<AppItem>) {
-        scope.launch(Dispatchers.Default) {
+        hydrationJob?.cancel()
+        hydrationJob = scope.launch(Dispatchers.Default) {
             try {
-                var updated = false
-                val hydratedList = items.map { item ->
-                    if (item.iconBitmap != null) {
-                        item
-                    } else {
+                val currentList = items.toMutableList()
+                var pendingBatchUpdates = 0
+
+                for (i in currentList.indices) {
+                    val item = currentList[i]
+                    if (item.iconBitmap == null) {
                         val bmp = iconManager.loadIcon(item.iconCacheKey) {
                             try {
                                 val activities = launcherApps?.getActivityList(item.packageName, item.userHandle)
                                 val actInfo = activities?.firstOrNull { it.componentName == item.componentName }
                                 actInfo?.getIcon(0)
-                            } catch (e: Throwable) {
+                            } catch (_: Throwable) {
                                 null
                             }
                         }
                         if (bmp != null) {
-                            updated = true
-                            item.copy(iconBitmap = bmp)
-                        } else {
-                            item
+                            currentList[i] = item.copy(iconBitmap = bmp)
+                            pendingBatchUpdates++
                         }
+                    }
+
+                    // Flush batch updates every 8 items or on initial few items for instant display
+                    if (pendingBatchUpdates > 0 && (i < 8 || pendingBatchUpdates >= 12 || i == currentList.lastIndex)) {
+                        _appsState.value = currentList.toImmutableList()
+                        pendingBatchUpdates = 0
                     }
                 }
 
-                if (updated) {
-                    _appsState.value = hydratedList.toImmutableList()
+                if (pendingBatchUpdates > 0) {
+                    _appsState.value = currentList.toImmutableList()
                 }
+            } catch (c: CancellationException) {
+                throw c
             } catch (e: Throwable) {
                 Log.e(TAG, "Error in hydrateIconsInBackground: ${e.message}")
             }
@@ -291,5 +343,6 @@ class AppRepository(
         } catch (e: Throwable) {
             // ignored
         }
+        scope.cancel()
     }
 }

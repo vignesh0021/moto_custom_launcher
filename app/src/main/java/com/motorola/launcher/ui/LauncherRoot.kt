@@ -37,7 +37,7 @@ fun LauncherRoot(
     val dockKeys by repository.preferences.dockKeys.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
-    val searchResults by repository.searchApps(searchQuery).collectAsState(initial = emptyList<AppItem>().toImmutableList())
+    val searchResults by remember(searchQuery) { repository.searchApps(searchQuery) }.collectAsState(initial = emptyList<AppItem>().toImmutableList())
 
     val displayedDrawerApps = remember(searchQuery, allApps, searchResults) {
         if (searchQuery.isBlank()) allApps else searchResults
@@ -72,7 +72,7 @@ fun LauncherRoot(
     val gestureState = rememberDrawerGestureState(wallpaperZoomController)
 
     // Back button closes dialogs or app drawer before allowing exit
-    BackHandler(enabled = selectedAppContextApp != null || showQuickAccessCustomizer || gestureState.progress > 0.01f) {
+    BackHandler(enabled = selectedAppContextApp != null || showQuickAccessCustomizer || gestureState.isDrawerVisible) {
         when {
             selectedAppContextApp != null -> selectedAppContextApp = null
             showQuickAccessCustomizer -> showQuickAccessCustomizer = false
@@ -99,8 +99,8 @@ fun LauncherRoot(
             modifier = gestureModifier
         )
 
-        // App Drawer Layer (Active when progress > 0.0f)
-        if (gestureState.progress > 0.001f) {
+        // App Drawer Layer (Active when drawer is visible or transitioning)
+        if (gestureState.isDrawerVisible) {
             AppDrawerScreen(
                 apps = displayedDrawerApps,
                 quickAccessApps = quickAccessApps,

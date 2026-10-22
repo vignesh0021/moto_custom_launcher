@@ -1,15 +1,9 @@
 package com.motorola.launcher.ui.workspace
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,18 +67,6 @@ fun WorkspaceScreen(
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
-
-    // Pulsing breathing animation for swipe up indicator
-    val infiniteTransition = rememberInfiniteTransition(label = "indicatorBreath")
-    val indicatorAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
 
     Box(
         modifier = modifier
@@ -151,7 +133,7 @@ fun WorkspaceScreen(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0x1AFFFFFF))
-                    .border(1.dp, MotoCyanAccent.copy(alpha = indicatorAlpha * 0.5f), RoundedCornerShape(12.dp))
+                    .border(1.dp, MotoCyanAccent.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -162,13 +144,13 @@ fun WorkspaceScreen(
             ) {
                 Text(
                     text = "▲",
-                    color = MotoCyanAccent.copy(alpha = indicatorAlpha),
+                    color = MotoCyanAccent.copy(alpha = 0.85f),
                     fontSize = 9.sp
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "APPS",
-                    color = TextSecondary.copy(alpha = indicatorAlpha),
+                    color = TextSecondary.copy(alpha = 0.85f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp

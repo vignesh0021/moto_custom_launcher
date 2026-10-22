@@ -1,25 +1,36 @@
 package com.motorola.launcher.data.icon
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Manages GPU hardware-backed icon textures with binary disk caching and memory bounds.
- * Ensures launcher resting PSS remains strictly under 45 MB.
+ * Robust icon manager coordinating L1 in-memory LRU cache, L2 binary disk cache,
+ * and off-main-thread rasterization.
+ *
+ * Guarantees:
+ * - Thread-safe in-flight deduplication to prevent redundant disk I/O and rasterization.
+ * - Software bitmaps properly persisted to BinaryDiskCache on miss.
+ * - Memory bounded via LruCache with automatic GC cleanup.
  */
-class HardwareIconManager(context: Context) {
-
-    private val diskCache = BinaryDiskCache(context)
+class HardwareIconManager(
+    context: Context,
+    val diskCache: BinaryDiskCache = BinaryDiskCache(context)
+) {
     private val rasterizer = AdaptiveIconRasterizer(context)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Bounded in-memory cache holding GPU-backed ImageBitmaps
-    // Hardware bitmaps store pixels in VRAM, so memory in heap is minimal (< 0.2 MB for refs)
+    // Bounded in-memory L1 cache (128 app icons)
     private val memoryCache = object : LruCache<String, ImageBitmap>(128) {
         override fun entryRemoved(
             evicted: Boolean,
@@ -27,39 +38,79 @@ class HardwareIconManager(context: Context) {
             oldValue: ImageBitmap?,
             newValue: ImageBitmap?
         ) {
-            // No-op: GPU handles AHardwareBuffer ref counts automatically
+            // Bitmaps are left to GC; never recycle explicitly while UI may draw them
         }
     }
 
+    // In-flight request deduplication map to coalesce concurrent cache misses
+    private val inFlightLoads = ConcurrentHashMap<String, kotlinx.coroutines.Deferred<ImageBitmap?>>()
+
     /**
      * Resolves an icon with sub-millisecond memory lookup, binary disk fallback,
-     * or off-main-thread rasterization on Dispatchers.Default.
+     * or off-main-thread rasterization on Dispatchers.IO.
+     * Deduplicates concurrent misses for the same key.
      */
     suspend fun loadIcon(
         cacheKey: String,
         fallbackLoader: () -> Drawable?
-    ): ImageBitmap? = withContext(Dispatchers.Default) {
-        // 1. Fast memory cache hit (sub-0.1ms)
-        memoryCache.get(cacheKey)?.let { return@withContext it }
+    ): ImageBitmap? {
+        // 1. Fast L1 memory cache hit (sub-0.1ms)
+        memoryCache.get(cacheKey)?.let { return it }
 
-        // 2. Binary disk cache hit (sub-1ms)
-        val diskBmp = diskCache.readHardwareBitmap(cacheKey)
-        if (diskBmp != null) {
-            val imageBitmap = diskBmp.asImageBitmap()
-            memoryCache.put(cacheKey, imageBitmap)
-            return@withContext imageBitmap
+        // 2. Check for in-flight request to prevent duplicate concurrent work
+        val existingDeferred = inFlightLoads[cacheKey]
+        if (existingDeferred != null) {
+            return try {
+                existingDeferred.await()
+            } catch (c: CancellationException) {
+                throw c
+            } catch (e: Throwable) {
+                null
+            }
         }
 
-        // 3. Fallback: Rasterize drawable off-thread
-        val drawable = fallbackLoader() ?: return@withContext null
-        val hwBitmap = rasterizer.rasterizeToHardware(drawable) ?: return@withContext null
+        // 3. Launch async loading job
+        val deferred = scope.async {
+            try {
+                // Double check memory cache inside coroutine
+                memoryCache.get(cacheKey)?.let { return@async it }
 
-        // Persist to binary disk cache for future cold starts
-        // Note: rasterizer produced a hardware bitmap, but writeSoftwareBitmap accepts software bitmap.
-        // We write disk cache when possible or decode directly.
-        val imageBitmap = hwBitmap.asImageBitmap()
-        memoryCache.put(cacheKey, imageBitmap)
-        return@withContext imageBitmap
+                // Check L2 binary disk cache
+                val diskBmp = diskCache.readBitmap(cacheKey)
+                if (diskBmp != null) {
+                    val imageBmp = diskBmp.asImageBitmap()
+                    memoryCache.put(cacheKey, imageBmp)
+                    return@async imageBmp
+                }
+
+                // Fallback: Rasterize drawable off-thread
+                val drawable = fallbackLoader() ?: return@async null
+                val softwareBmp = rasterizer.rasterize(drawable) ?: return@async null
+
+                // Persist software bitmap to binary disk cache
+                diskCache.writeSoftwareBitmap(cacheKey, softwareBmp)
+
+                val imageBmp = softwareBmp.asImageBitmap()
+                memoryCache.put(cacheKey, imageBmp)
+                imageBmp
+            } catch (c: CancellationException) {
+                throw c
+            } catch (e: Throwable) {
+                null
+            } finally {
+                inFlightLoads.remove(cacheKey)
+            }
+        }
+
+        inFlightLoads[cacheKey] = deferred
+
+        return try {
+            deferred.await()
+        } catch (c: CancellationException) {
+            throw c
+        } catch (e: Throwable) {
+            null
+        }
     }
 
     /**
@@ -69,7 +120,26 @@ class HardwareIconManager(context: Context) {
         return memoryCache.get(cacheKey)
     }
 
+    /**
+     * Invalidates a specific icon entry from memory and disk.
+     */
+    fun invalidate(cacheKey: String) {
+        memoryCache.remove(cacheKey)
+        diskCache.delete(cacheKey)
+    }
+
+    /**
+     * Clears all memory cache entries.
+     */
     fun clearMemory() {
         memoryCache.evictAll()
+    }
+
+    /**
+     * Clears both memory and disk caches.
+     */
+    fun clearAll() {
+        memoryCache.evictAll()
+        diskCache.evictAll()
     }
 }

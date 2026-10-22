@@ -4,7 +4,6 @@ import android.app.Activity
 import android.os.Build
 import android.util.Log
 import android.view.Display
-import android.view.Surface
 import android.view.Window
 import android.view.WindowManager
 
@@ -75,52 +74,9 @@ class Display144HzManager(private val activity: Activity) {
             }
 
             window.attributes = layoutParams
-
-            // Android 11+ (API 30..36) Surface Frame Rate Hint
-            enforceSurfaceFrameRate(window)
+            Log.i(TAG, "Window preferred display attributes successfully applied.")
         } catch (t: Throwable) {
             Log.w(TAG, "Failed configuring display refresh rate: ${t.message}")
-        }
-    }
-
-    private fun enforceSurfaceFrameRate(window: Window) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                // Ensure Window LayoutParams preferredRefreshRate is explicitly locked to 144Hz
-                val layoutParams = window.attributes
-                layoutParams.preferredRefreshRate = TARGET_REFRESH_RATE
-                window.attributes = layoutParams
-
-                // Android 11+ (API 30..36) Surface Frame Rate Hint via ViewRootImpl Surface
-                window.decorView.post {
-                    try {
-                        val viewRootImpl = window.decorView.javaClass.getMethod("getViewRootImpl").invoke(window.decorView)
-                        if (viewRootImpl != null) {
-                            val surfaceMethod = viewRootImpl.javaClass.getMethod("getSurface")
-                            val surface = surfaceMethod.invoke(viewRootImpl) as? Surface
-                            if (surface != null && surface.isValid) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    surface.setFrameRate(
-                                        TARGET_REFRESH_RATE,
-                                        Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,
-                                        Surface.CHANGE_FRAME_RATE_ALWAYS
-                                    )
-                                } else {
-                                    surface.setFrameRate(
-                                        TARGET_REFRESH_RATE,
-                                        Surface.FRAME_RATE_COMPATIBILITY_DEFAULT
-                                    )
-                                }
-                                Log.d(TAG, "Window Surface frame-rate locked to $TARGET_REFRESH_RATE Hz via Surface")
-                            }
-                        }
-                    } catch (e: Throwable) {
-                        Log.d(TAG, "Direct Surface frame rate hint skipped: ${e.message}")
-                    }
-                }
-            } catch (t: Throwable) {
-                Log.w(TAG, "Error configuring Surface frame-rate hints: ${t.message}")
-            }
         }
     }
 }

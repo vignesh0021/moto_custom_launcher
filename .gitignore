@@ -55,3 +55,8 @@ captures/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Agent skills
+.agents/
+skills-lock.json
+

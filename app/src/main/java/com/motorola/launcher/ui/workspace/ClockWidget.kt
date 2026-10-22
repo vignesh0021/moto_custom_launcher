@@ -5,12 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -114,11 +108,13 @@ fun ClockWidget(
         }
     }
 
-    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
+    val timePattern = if (is24Hour) "HH:mm" else "h:mm"
+    val timeFormat = remember(timePattern) { SimpleDateFormat(timePattern, Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()) }
 
     val date = remember(currentTime) { Date(currentTime) }
-    val timeText = remember(currentTime) { timeFormat.format(date) }
+    val timeText = remember(currentTime, timeFormat) { timeFormat.format(date) }
     val dateText = remember(currentTime) { dateFormat.format(date) }
 
     val greeting = remember(currentTime) {
@@ -130,17 +126,6 @@ fun ClockWidget(
             else -> "Good Night"
         }
     }
-
-    val pulseTransition = rememberInfiniteTransition(label = "accentPulse")
-    val pulseAlpha by pulseTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
 
     Column(
         modifier = modifier.padding(horizontal = 24.dp, vertical = 12.dp),
@@ -159,7 +144,7 @@ fun ClockWidget(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(if (isCharging) MotoEmerald else MotoCyanAccent.copy(alpha = pulseAlpha))
+                    .background(if (isCharging) MotoEmerald else MotoCyanAccent)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(

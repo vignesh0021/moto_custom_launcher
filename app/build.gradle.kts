@@ -54,7 +54,8 @@ android {
             if (releaseKeystore.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
-                signingConfig = signingConfigs.getByName("debug")
+                // Do not silently sign release with debug keys; produce unsigned APK
+                signingConfig = null
             }
         }
         debug {
@@ -76,6 +77,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 
     packaging {
@@ -130,7 +135,3 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
 }
 
-// Bypass AAR metadata check to allow compiling Compose 1.12 against Android 16 (API 36)
-tasks.matching { it.name.contains("AarMetadata") }.configureEach {
-    enabled = false
-}

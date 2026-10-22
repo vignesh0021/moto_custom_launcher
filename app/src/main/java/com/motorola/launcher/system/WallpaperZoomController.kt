@@ -6,16 +6,36 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.View
+import java.lang.reflect.Method
 
 /**
  * Controller for hardware-backed live wallpaper zooming and parallax offset integration.
- * Executes zero-allocation updates directly to the SurfaceFlinger wallpaper layer.
+ * Executes low-overhead updates to the SurfaceFlinger wallpaper layer with reflection caching and IPC coalescing.
  */
 class WallpaperZoomController(private val activity: Activity) {
 
     companion object {
         private const val TAG = "WallpaperZoomController"
         private const val MAX_WALLPAPER_ZOOM = 0.22f // 22% zoom out on full drawer expansion
+        private const val ZOOM_DELTA_THRESHOLD = 0.005f
+
+        // Cached reflection method for Android 12+ (API 31+) WallpaperManager.setWallpaperZoomOut
+        private val setWallpaperZoomOutMethod: Method? by lazy {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    WallpaperManager::class.java.getMethod(
+                        "setWallpaperZoomOut",
+                        IBinder::class.java,
+                        Float::class.javaPrimitiveType
+                    ).apply { isAccessible = true }
+                } catch (t: Throwable) {
+                    Log.d(TAG, "setWallpaperZoomOut reflection unavailable: ${t.message}")
+                    null
+                }
+            } else {
+                null
+            }
+        }
     }
 
     private val wallpaperManager: WallpaperManager by lazy {
@@ -38,35 +58,34 @@ class WallpaperZoomController(private val activity: Activity) {
 
     /**
      * Updates wallpaper zoom out level based on App Drawer expansion progress [0.0f..1.0f].
-     * Driven by 360Hz touch input and VSYNC callbacks without allocations.
+     * Coalesces updates to prevent binder IPC saturation while guaranteeing exact 0.0f reset.
      */
     fun updateDrawerProgress(progress: Float) {
         val token = getWindowToken() ?: return
         val clampedProgress = progress.coerceIn(0.0f, 1.0f)
-        
+
         // Fast cubic-out interpolation: 1 - (1 - p)^3
         val inv = 1.0f - clampedProgress
         val interpolated = 1.0f - (inv * inv * inv)
         val targetZoom = interpolated * MAX_WALLPAPER_ZOOM
 
-        // Threshold check to avoid redundant binder IPC across VSYNCs
-        if (kotlin.math.abs(targetZoom - lastZoomApplied) < 0.001f) {
+        val isReset = clampedProgress <= 0.001f
+        val isFull = clampedProgress >= 0.999f
+        val delta = kotlin.math.abs(targetZoom - lastZoomApplied)
+
+        // Coalesce updates unless crossing threshold or reaching exact reset/full states
+        if (delta < ZOOM_DELTA_THRESHOLD && !isReset && !isFull) {
             return
         }
 
-        lastZoomApplied = targetZoom
+        val appliedZoom = if (isReset) 0.0f else if (isFull) MAX_WALLPAPER_ZOOM else targetZoom
+        lastZoomApplied = appliedZoom
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                val method = wallpaperManager.javaClass.getMethod(
-                    "setWallpaperZoomOut",
-                    IBinder::class.java,
-                    Float::class.javaPrimitiveType
-                )
-                method.invoke(wallpaperManager, token, targetZoom)
-            } catch (t: Throwable) {
-                // Graceful fallback if system API is inaccessible or window detached
-            }
+        val method = setWallpaperZoomOutMethod ?: return
+        try {
+            method.invoke(wallpaperManager, token, appliedZoom)
+        } catch (_: Throwable) {
+            // Graceful fallback if system API throws or token becomes invalid
         }
     }
 

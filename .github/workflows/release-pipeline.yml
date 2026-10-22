@@ -1,19 +1,22 @@
-name: Production Launcher CI/CD & Performance Pacing Gate
+name: Production Launcher CI/CD & Quality Gate
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'optimization/**', 'optimization/phase-1-5' ]
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, 'optimization/**' ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build-and-verify:
-    name: Build, Stability Gate & R8 Optimization
+    name: Build, Quality Gate, Tests & R8 Optimization
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +31,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Configure Android SDK & Build Tools PATH
+      - name: Configure Android SDK & Build Tools
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
           BUILD_TOOLS_DIR=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
@@ -37,28 +40,45 @@ jobs:
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: Setup Gradle 9.6 with Dependency & Build Caching
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x ./gradlew
+
+      - name: Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6.0'
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       # ------------------------------------------------------------------------
-      # STEP 1: Kotlin 2.4.20 K2 Compilation & Compose Compiler Metrics Run
+      # STEP 1: Run Unit Tests
       # ------------------------------------------------------------------------
-      - name: Compile Release with R8 Full Mode & Compose Metrics
+      - name: Run Unit Tests
         run: |
-          gradle assembleRelease \
+          ./gradlew testReleaseUnitTest --stacktrace
+
+      - name: Upload Unit Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/testReleaseUnitTest/
+          retention-days: 14
+
+      # ------------------------------------------------------------------------
+      # STEP 2: Compile Debug and Release Variants with R8 Full Mode
+      # ------------------------------------------------------------------------
+      - name: Assemble Debug and Release APKs
+        run: |
+          ./gradlew assembleDebug assembleRelease \
             -Pandroid.enableR8.fullMode=true \
             --stacktrace
 
       # ------------------------------------------------------------------------
-      # STEP 2: Strict Compose Stability CI Quality Gate
+      # STEP 3: Compose Stability Quality Gate
       # ------------------------------------------------------------------------
       - name: Verify Compose Stability Gate (Zero Unstable Composables)
         run: |
           echo "================================================================="
-          echo "AUDITING JETPACK COMPOSE 1.12 COMPILER STABILITY METRICS"
+          echo "AUDITING JETPACK COMPOSE COMPILER STABILITY METRICS"
           echo "================================================================="
           
           REPORTS_DIR="$GITHUB_WORKSPACE/app/build/reports/compose/reports"
@@ -72,8 +92,6 @@ jobs:
 
           UNSTABLE_COMPOSABLES=0
           if [ -n "$COMPOSABLES_REPORT" ] && [ -f "$COMPOSABLES_REPORT" ]; then
-            # Search for restartable composables that are NOT skippable
-            # In Compose compiler metrics: "restartable skippable" is expected; "restartable" alone indicates unstable params
             UNSTABLE_MATCHES=$(grep -E "^restartable [a-zA-Z0-9_]+ fun" "$COMPOSABLES_REPORT" || true)
             if [ -n "$UNSTABLE_MATCHES" ]; then
               echo "::error::Detected non-skippable (unstable) composables:"
@@ -87,7 +105,6 @@ jobs:
           fi
 
           if [ -n "$CLASSES_REPORT" ] && [ -f "$CLASSES_REPORT" ]; then
-            # Scan for unstable data classes in launcher UI state domain
             UNSTABLE_CLASSES=$(grep -E "^unstable class com\.motorola\.launcher\.ui\.model" "$CLASSES_REPORT" || true)
             if [ -n "$UNSTABLE_CLASSES" ]; then
               echo "::error::Detected unstable UI state classes:"
@@ -105,9 +122,9 @@ jobs:
           echo "✓ Compose Stability Gate passed successfully."
 
       # ------------------------------------------------------------------------
-      # STEP 3: Baseline Profile Verification & Mapping Validation
+      # STEP 4: Validate R8 Mapping and Generated APKs
       # ------------------------------------------------------------------------
-      - name: Validate Baseline Profile & R8 ProGuard Output
+      - name: Validate Release Artifacts
         run: |
           MAPPING_FILE="$GITHUB_WORKSPACE/app/build/outputs/mapping/release/mapping.txt"
           if [ -f "$MAPPING_FILE" ]; then
@@ -117,17 +134,24 @@ jobs:
             echo "::warning::R8 mapping file not generated."
           fi
 
-          APK_FILE=$(find "$GITHUB_WORKSPACE/app/build/outputs/apk/release" -name "*.apk" | head -n 1)
-          if [ -f "$APK_FILE" ]; then
-            APK_SIZE=$(du -h "$APK_FILE" | cut -f1)
-            echo "✓ Release APK generated: $APK_FILE (Size: $APK_SIZE)"
+          DEBUG_APK=$(find "$GITHUB_WORKSPACE/app/build/outputs/apk/debug" -name "*.apk" | head -n 1)
+          if [ -f "$DEBUG_APK" ]; then
+            echo "✓ Debug APK generated: $DEBUG_APK (Size: $(du -h "$DEBUG_APK" | cut -f1))"
+          else
+            echo "::error::Debug APK not found."
+            exit 1
+          fi
+
+          RELEASE_APK=$(find "$GITHUB_WORKSPACE/app/build/outputs/apk/release" -name "*.apk" | head -n 1)
+          if [ -f "$RELEASE_APK" ]; then
+            echo "✓ Release APK generated: $RELEASE_APK (Size: $(du -h "$RELEASE_APK" | cut -f1))"
           else
             echo "::error::Release APK not found."
             exit 1
           fi
 
       # ------------------------------------------------------------------------
-      # STEP 4: Automated APK Signing via GitHub Secrets
+      # STEP 5: Release APK Signing (If Secrets Configured)
       # ------------------------------------------------------------------------
       - name: Sign Release APK
         id: sign_apk
@@ -137,15 +161,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          UNSIGNED_APK=$(find "$GITHUB_WORKSPACE/app/build/outputs/apk/release" -name "*unsigned.apk" -o -name "*release.apk" | head -n 1)
+          RAW_RELEASE_APK=$(find "$GITHUB_WORKSPACE/app/build/outputs/apk/release" -name "*.apk" ! -name "*signed.apk" | head -n 1)
           SIGNED_APK="$GITHUB_WORKSPACE/app/build/outputs/apk/release/moto-launcher-release-signed.apk"
 
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "Decoding release keystore from GitHub Secrets..."
+            echo "Configured production release keystore detected. Signing..."
             echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/release.keystore
             
-            # Align and sign with APK Signature Scheme v2, v3, v4
-            zipalign -v -p 4 "$UNSIGNED_APK" "$SIGNED_APK" || cp "$UNSIGNED_APK" "$SIGNED_APK"
+            zipalign -v -p 4 "$RAW_RELEASE_APK" "$SIGNED_APK" || cp "$RAW_RELEASE_APK" "$SIGNED_APK"
             apksigner sign --ks /tmp/release.keystore \
               --ks-pass "pass:$KEYSTORE_PASSWORD" \
               --ks-key-alias "$KEY_ALIAS" \
@@ -156,25 +179,39 @@ jobs:
               "$SIGNED_APK"
               
             apksigner verify --verbose "$SIGNED_APK"
-            echo "✓ Production APK signed with v2/v3/v4 signatures."
+            echo "HAS_SIGNED_RELEASE=true" >> $GITHUB_ENV
+            echo "✓ Release APK signed with official credentials."
           else
-            echo "Generating ephemeral CI test key for artifact signing..."
-            keytool -genkey -v -keystore /tmp/ci_test.keystore -alias ciKey -keyalg RSA -keysize 2048 -validity 10000 -storepass testpass -keypass testpass -dname "CN=MotorolaLauncherCI"
-            zipalign -v -p 4 "$UNSIGNED_APK" "$SIGNED_APK" || cp "$UNSIGNED_APK" "$SIGNED_APK"
-            apksigner sign --ks /tmp/ci_test.keystore --ks-pass pass:testpass --key-pass pass:testpass "$SIGNED_APK"
-            echo "✓ Ephemeral CI signing verified."
+            echo "No production signing secret configured. Preserving build as verified unsigned release artifact."
+            echo "HAS_SIGNED_RELEASE=false" >> $GITHUB_ENV
           fi
 
       # ------------------------------------------------------------------------
-      # STEP 5: Upload Build Artifacts
+      # STEP 6: Upload Build Artifacts
       # ------------------------------------------------------------------------
-      - name: Upload Signed Release APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: moto-launcher-release-apk
-          path: app/build/outputs/apk/release/*signed.apk
+          name: moto-launcher-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload Unsigned Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: moto-launcher-release-unsigned-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Signed Release APK (If Configured)
+        if: env.HAS_SIGNED_RELEASE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: moto-launcher-release-signed-apk
+          path: app/build/outputs/apk/release/moto-launcher-release-signed.apk
+          retention-days: 30
 
       - name: Upload R8 ProGuard Mapping
         uses: actions/upload-artifact@v4

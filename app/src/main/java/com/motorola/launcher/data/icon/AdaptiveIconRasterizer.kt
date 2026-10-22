@@ -28,33 +28,29 @@ class AdaptiveIconRasterizer(private val context: Context) {
     }
 
     /**
-     * Rasterizes any Drawable into an immutable Bitmap.Config.HARDWARE.
-     * Guarantees zero long-lived allocations in Java Heap / Native PSS.
+     * Rasterizes any Drawable into an ARGB_8888 software bitmap suitable for disk serialization and display.
      */
-    fun rasterizeToHardware(drawable: Drawable): Bitmap? {
-        // Fast path for BitmapDrawable that is already hardware-backed
-        if (drawable is BitmapDrawable) {
-            val bmp = drawable.bitmap
-            if (bmp != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bmp.config == Bitmap.Config.HARDWARE) {
-                return bmp
-            }
-        }
-
+    fun rasterize(drawable: Drawable): Bitmap? {
         val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else targetSizePx
         val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else targetSizePx
         val size = width.coerceAtLeast(height).coerceIn(targetSizePx, targetSizePx * 2)
 
-        try {
+        return try {
             val softwareBitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(softwareBitmap)
 
             drawable.setBounds(0, 0, size, size)
             drawable.draw(canvas)
 
-            return softwareBitmap
+            softwareBitmap
         } catch (t: Throwable) {
             Log.e(TAG, "Rasterization failed: ${t.message}", t)
-            return null
+            null
         }
     }
+
+    /**
+     * Alias for backward compatibility.
+     */
+    fun rasterizeToHardware(drawable: Drawable): Bitmap? = rasterize(drawable)
 }

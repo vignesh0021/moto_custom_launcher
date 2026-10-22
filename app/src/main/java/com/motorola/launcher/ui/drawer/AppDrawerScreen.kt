@@ -264,10 +264,10 @@ fun AppDrawerScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Unblocked 144Hz App Grid with Alphabetical Fast Scrubber
+            // Unblocked 144Hz Adaptive App Grid with Alphabetical Fast Scrubber
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
+                    columns = GridCells.Adaptive(minSize = 76.dp),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(

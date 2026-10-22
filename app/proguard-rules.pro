@@ -60,3 +60,9 @@
 # Preserve Immutable UI Model classes
 -keep class com.motorola.launcher.ui.model.** { *; }
 
+# Launcher Main Entry Points and Cache Headers
+-keep class com.motorola.launcher.MainActivity { *; }
+-keep class com.motorola.launcher.LauncherApplication { *; }
+-keep class com.motorola.launcher.data.icon.IconCacheHeader { *; }
+
+
