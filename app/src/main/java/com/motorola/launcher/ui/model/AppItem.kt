@@ -15,7 +15,7 @@ data class AppItem(
     val packageName: String,
     val activityName: String,
     val label: String,
-    val userHandle: UserHandle,
+    val userHandle: UserHandle? = null,
     val iconCacheKey: String,
     val iconBitmap: ImageBitmap? = null
 ) {

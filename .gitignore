@@ -60,3 +60,8 @@ Thumbs.db
 .agents/
 skills-lock.json
 
+# Temporary inspection scripts
+check_*.py
+get_log.py
+query_*.py
+

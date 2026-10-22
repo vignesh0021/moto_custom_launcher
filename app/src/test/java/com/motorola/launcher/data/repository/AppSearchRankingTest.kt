@@ -1,6 +1,5 @@
 package com.motorola.launcher.data.repository
 
-import android.os.Process
 import com.motorola.launcher.ui.model.AppItem
 import kotlinx.collections.immutable.toImmutableList
 import org.junit.Assert.assertEquals
@@ -18,7 +17,7 @@ class AppSearchRankingTest {
             packageName = packageName,
             activityName = "MainActivity",
             label = label,
-            userHandle = Process.myUserHandle(),
+            userHandle = null,
             iconCacheKey = "icon_${packageName}_MainActivity_0",
             iconBitmap = null
         )

@@ -27,7 +27,7 @@ abstract class LauncherDatabase : RoomDatabase() {
                 )
                 // Use fast memory temp store and WAL mode for sub-2ms reads during UI scroll
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
                 .also { INSTANCE = it }
             }

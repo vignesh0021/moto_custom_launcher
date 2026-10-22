@@ -245,7 +245,8 @@ class AppRepository(
                     if (item.iconBitmap == null) {
                         val bmp = iconManager.loadIcon(item.iconCacheKey) {
                             try {
-                                val activities = launcherApps?.getActivityList(item.packageName, item.userHandle)
+                                val user = item.userHandle ?: Process.myUserHandle()
+                                val activities = launcherApps?.getActivityList(item.packageName, user)
                                 val actInfo = activities?.firstOrNull { it.componentName == item.componentName }
                                 actInfo?.getIcon(0)
                             } catch (_: Throwable) {
@@ -289,7 +290,7 @@ class AppRepository(
 
             launcherApps?.startMainActivity(
                 item.componentName,
-                item.userHandle,
+                item.userHandle ?: Process.myUserHandle(),
                 sourceBounds,
                 opts
             )
@@ -305,7 +306,7 @@ class AppRepository(
         try {
             launcherApps?.startAppDetailsActivity(
                 item.componentName,
-                item.userHandle,
+                item.userHandle ?: Process.myUserHandle(),
                 null,
                 null
             )
