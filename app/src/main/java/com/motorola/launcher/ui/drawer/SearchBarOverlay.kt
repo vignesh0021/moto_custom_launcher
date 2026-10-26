@@ -1,5 +1,9 @@
 package com.motorola.launcher.ui.drawer
 
+import android.content.Context
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,25 +28,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.motorola.launcher.ui.components.chamferedShape
+import com.motorola.launcher.ui.theme.LocalCustomization
 import com.motorola.launcher.ui.theme.StarkCyan
-import com.motorola.launcher.ui.theme.StarkCyanBright
 import com.motorola.launcher.ui.theme.StarkHudBorder
-import com.motorola.launcher.ui.theme.StarkHudBorderBright
 import com.motorola.launcher.ui.theme.TextDimHud
 import com.motorola.launcher.ui.theme.TextPrimary
-import com.motorola.launcher.ui.theme.TextSecondary
 
 /**
  * Holographic Cybernetic Search Bar for STARK OS Application Index.
+ * Features rounded pill frame, magnifying glass search reticle, and voice search trigger.
  */
 @Composable
 fun SearchBarOverlay(
@@ -52,25 +55,22 @@ fun SearchBarOverlay(
     appCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    val barShape = chamferedShape(cutSize = 18f)
+    val context = LocalContext.current
+    val view = LocalView.current
+    val customization = LocalCustomization.current
+    val themeColor = customization.themeColor
+    val pillShape = RoundedCornerShape(24.dp)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp)
-            .clip(barShape)
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        Color(0x33060C18),
-                        Color(0x59040810)
-                    )
-                )
-            )
+            .height(48.dp)
+            .clip(pillShape)
+            .background(Color(0x1F060C18))
             .border(
                 width = 1.dp,
-                color = if (query.isNotEmpty()) StarkCyanBright else StarkHudBorder,
-                shape = barShape
+                color = if (query.isNotEmpty()) themeColor.bright else StarkHudBorder,
+                shape = pillShape
             )
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
@@ -79,23 +79,13 @@ fun SearchBarOverlay(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Radar Reticle Search Icon
-            Box(
-                modifier = Modifier
-                    .size(26.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x2600F0FF)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "⌖",
-                    color = StarkCyan,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.width(10.dp))
+            // Search Magnifying Glass Reticle
+            Text(
+                text = "🔍",
+                color = themeColor.primary,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(end = 8.dp)
+            )
 
             BasicTextField(
                 value = query,
@@ -103,27 +93,28 @@ fun SearchBarOverlay(
                 modifier = Modifier.weight(1f),
                 textStyle = TextStyle(
                     color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif,
                     fontWeight = FontWeight.Normal,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.3.sp
                 ),
-                cursorBrush = SolidColor(StarkCyan),
+                cursorBrush = SolidColor(themeColor.primary),
                 singleLine = true,
                 decorationBox = { innerTextField ->
                     if (query.isEmpty()) {
                         Text(
-                            text = "INITIATE QUERY // APP INDEX...",
+                            text = "Search apps, contacts, web...",
                             color = TextDimHud,
-                            fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 1.0.sp
+                            fontSize = 13.sp,
+                            fontFamily = FontFamily.SansSerif,
+                            letterSpacing = 0.3.sp
                         )
                     }
                     innerTextField()
                 }
             )
 
+            // Clear button if search query active
             AnimatedVisibility(
                 visible = query.isNotEmpty(),
                 enter = fadeIn(),
@@ -143,31 +134,50 @@ fun SearchBarOverlay(
                 ) {
                     Text(
                         text = "✕",
-                        color = StarkCyan,
+                        color = themeColor.primary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            if (query.isEmpty() && appCount > 0) {
+            // Microphone Voice Search Trigger if search is empty
+            if (query.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0x1F00F0FF))
-                        .border(1.dp, StarkHudBorder, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (customization.hapticFeedback) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                }
+                                launchVoiceSearch(context)
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "TOTAL: $appCount",
-                        color = StarkCyan,
-                        fontSize = 9.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp
+                        text = "🎙",
+                        color = themeColor.primary,
+                        fontSize = 16.sp
                     )
                 }
             }
         }
+    }
+}
+
+private fun launchVoiceSearch(context: Context) {
+    try {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    } catch (_: Throwable) {
+        // Fallback gracefully if speech service is unavailable
     }
 }

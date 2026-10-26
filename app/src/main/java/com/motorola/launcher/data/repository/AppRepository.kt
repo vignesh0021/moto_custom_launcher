@@ -30,9 +30,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -57,6 +59,22 @@ class AppRepository(
     companion object {
         private const val TAG = "AppRepository"
         private const val PACKAGE_COALESCE_DELAY_MS = 250L
+
+        /**
+         * Pure filtering and ranking function that sorts prefix matches ahead of substring matches.
+         */
+        fun filterAndRankApps(apps: List<AppItem>, query: String): ImmutableList<AppItem> {
+            val trimmed = query.trim()
+            if (trimmed.isEmpty()) return apps.toImmutableList()
+
+            return apps.filter {
+                it.label.contains(trimmed, ignoreCase = true) ||
+                it.packageName.contains(trimmed, ignoreCase = true)
+            }.sortedWith(compareBy(
+                { !it.label.startsWith(trimmed, ignoreCase = true) }, // Prefix matches first
+                { it.label.lowercase() }
+            )).toImmutableList()
+        }
     }
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
@@ -213,25 +231,23 @@ class AppRepository(
     }
 
     /**
-     * Sub-millisecond prefix-ranked search query executed against in-memory index on Dispatchers.Default.
+     * Reactive sub-millisecond prefix-ranked search query executed against in-memory index on Dispatchers.Default.
+     * Reacts to BOTH query changes and installed-app-list / icon-hydration updates.
      */
-    fun searchApps(query: String): Flow<ImmutableList<AppItem>> = flow {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) {
-            emit(_appsState.value)
-            return@flow
-        }
-        val currentApps = _appsState.value
-        val filtered = currentApps.filter {
-            it.label.contains(trimmed, ignoreCase = true) ||
-            it.packageName.contains(trimmed, ignoreCase = true)
-        }.sortedWith(compareBy(
-            { !it.label.startsWith(trimmed, ignoreCase = true) }, // Prefix matches first
-            { it.label.lowercase() }
-        )).toImmutableList()
+    fun searchApps(query: String): Flow<ImmutableList<AppItem>> {
+        return _appsState.map { currentApps ->
+            filterAndRankApps(currentApps, query)
+        }.flowOn(Dispatchers.Default)
+    }
 
-        emit(filtered)
-    }.flowOn(Dispatchers.Default)
+    /**
+     * Reactive search combining both a dynamic query flow and installed apps state changes.
+     */
+    fun searchApps(queryFlow: Flow<String>): Flow<ImmutableList<AppItem>> {
+        return combine(_appsState, queryFlow) { currentApps, query ->
+            filterAndRankApps(currentApps, query)
+        }.flowOn(Dispatchers.Default)
+    }
 
     private fun hydrateIconsInBackground(items: List<AppItem>) {
         hydrationJob?.cancel()

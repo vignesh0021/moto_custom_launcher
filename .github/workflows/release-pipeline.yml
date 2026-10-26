@@ -34,7 +34,7 @@ jobs:
       - name: Configure Android SDK & Build Tools
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "platforms;android-37.0" || true
           BUILD_TOOLS_DIR=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
           echo "Using Android Build Tools from: $BUILD_TOOLS_DIR"
           echo "$BUILD_TOOLS_DIR" >> $GITHUB_PATH

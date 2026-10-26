@@ -4,7 +4,7 @@
 # ==============================================================================
 
 # Run maximum aggressive optimization passes
--optimizationpasses 5
+# -optimizationpasses 5
 -allowaccessmodification
 -repackageclasses 'com.motorola.launcher.opt'
 

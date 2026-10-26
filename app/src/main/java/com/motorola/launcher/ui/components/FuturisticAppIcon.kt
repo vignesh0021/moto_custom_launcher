@@ -1,5 +1,6 @@
 package com.motorola.launcher.ui.components
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -27,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,17 +37,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.motorola.launcher.ui.model.AppItem
+import com.motorola.launcher.ui.model.IconStylePreset
+import com.motorola.launcher.ui.theme.LocalCustomization
 import com.motorola.launcher.ui.theme.StarkCyan
-import com.motorola.launcher.ui.theme.StarkCyanBright
-import com.motorola.launcher.ui.theme.StarkCyanGlow
-import com.motorola.launcher.ui.theme.StarkDarkSurface
 import com.motorola.launcher.ui.theme.StarkHudBorder
-import com.motorola.launcher.ui.theme.StarkHudBorderBright
 import com.motorola.launcher.ui.theme.TextPrimary
 
 /**
- * Futuristic App Icon component featuring procedural HUD corner brackets,
- * cybernetic framing, responsive micro-spring tactile bounce, and high-legibility labels.
+ * Futuristic App Icon component supporting customizable icon styles (Tech, Glow, Minimal, Rounded),
+ * dynamic theme accent colors, cybernetic corner brackets, and tactile press physics.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -57,10 +57,14 @@ fun FuturisticAppIcon(
     iconSize: Dp = 50.dp,
     showLabel: Boolean = true
 ) {
+    val view = LocalView.current
+    val customization = LocalCustomization.current
+    val themeColor = customization.themeColor
+    val iconStyle = customization.iconStyle
+
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Tactile micro-spring press physics
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.88f else 1.0f,
         animationSpec = spring(
@@ -69,6 +73,9 @@ fun FuturisticAppIcon(
         ),
         label = "futuristicIconScale"
     )
+
+    val frameShape = RoundedCornerShape(iconStyle.cornerRadius)
+    val innerIconShape = RoundedCornerShape((iconStyle.cornerRadius - 2.dp).coerceAtLeast(4.dp))
 
     Column(
         modifier = modifier
@@ -79,39 +86,64 @@ fun FuturisticAppIcon(
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
+                onClick = {
+                    if (customization.hapticFeedback) {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    }
+                    onClick()
+                },
+                onLongClick = {
+                    if (customization.hapticFeedback) {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    }
+                    onLongClick()
+                }
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Futuristic Icon Frame Container
+        val borderColor = when {
+            isPressed -> themeColor.bright
+            iconStyle.hasGlow -> themeColor.primary
+            else -> themeColor.primary.copy(alpha = iconStyle.borderAlpha)
+        }
+
+        val isClean = iconStyle == IconStylePreset.CLEAN
+
         Box(
             modifier = Modifier
-                .size(iconSize + 10.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(
-                    if (isPressed) Color(0x3300F0FF) else Color(0x1A080F1D)
-                )
-                .border(
-                    width = if (isPressed) 1.5.dp else 1.dp,
-                    color = if (isPressed) StarkCyanBright else StarkHudBorder,
-                    shape = RoundedCornerShape(14.dp)
+                .size(iconSize + if (isClean) 0.dp else 10.dp)
+                .clip(frameShape)
+                .then(
+                    if (!isClean) {
+                        Modifier
+                            .background(
+                                if (isPressed) themeColor.subtle else Color(0x1F060C16)
+                            )
+                            .border(
+                                width = if (isPressed || iconStyle.hasGlow) 1.5.dp else 1.dp,
+                                color = borderColor,
+                                shape = frameShape
+                            )
+                    } else Modifier
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // Cybernetic Corner Reticle Accents
-            Canvas(modifier = Modifier.matchParentSize()) {
-                val bracketSize = 6.dp.toPx()
-                val bracketColor = if (isPressed) StarkCyanBright else StarkHudBorderBright.copy(alpha = 0.6f)
-                val stroke = 1.5.dp.toPx()
+            // Draw Cybernetic Corner Brackets in TECH icon style
+            if (iconStyle == IconStylePreset.TECH) {
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    val bracketSize = 5.dp.toPx()
+                    val bracketColor = if (isPressed) themeColor.bright else themeColor.primary.copy(alpha = 0.7f)
+                    val stroke = 1.2.dp.toPx()
 
-                // Top-Left corner
-                drawLine(bracketColor, Offset(2.dp.toPx(), 2.dp.toPx()), Offset(2.dp.toPx() + bracketSize, 2.dp.toPx()), stroke)
-                drawLine(bracketColor, Offset(2.dp.toPx(), 2.dp.toPx()), Offset(2.dp.toPx(), 2.dp.toPx() + bracketSize), stroke)
+                    // Top-Left corner
+                    drawLine(bracketColor, Offset(2.dp.toPx(), 2.dp.toPx()), Offset(2.dp.toPx() + bracketSize, 2.dp.toPx()), stroke)
+                    drawLine(bracketColor, Offset(2.dp.toPx(), 2.dp.toPx()), Offset(2.dp.toPx(), 2.dp.toPx() + bracketSize), stroke)
 
-                // Bottom-Right corner
-                drawLine(bracketColor, Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()), Offset(size.width - 2.dp.toPx() - bracketSize, size.height - 2.dp.toPx()), stroke)
-                drawLine(bracketColor, Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()), Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx() - bracketSize), stroke)
+                    // Bottom-Right corner
+                    drawLine(bracketColor, Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()), Offset(size.width - 2.dp.toPx() - bracketSize, size.height - 2.dp.toPx()), stroke)
+                    drawLine(bracketColor, Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()), Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx() - bracketSize), stroke)
+                }
             }
 
             if (app.iconBitmap != null) {
@@ -120,28 +152,28 @@ fun FuturisticAppIcon(
                     contentDescription = app.label,
                     modifier = Modifier
                         .size(iconSize)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(innerIconShape)
                 )
             } else {
                 // Procedural Holographic Monogram Fallback
                 Box(
                     modifier = Modifier
                         .size(iconSize)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(innerIconShape)
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    Color(0x3300F0FF),
+                                    themeColor.subtle,
                                     Color(0x11040812)
                                 )
                             )
                         )
-                        .border(1.dp, StarkHudBorder, RoundedCornerShape(10.dp)),
+                        .border(1.dp, StarkHudBorder, innerIconShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = app.label.take(1).uppercase(),
-                        color = StarkCyan,
+                        color = themeColor.primary,
                         fontSize = 18.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold
@@ -157,10 +189,17 @@ fun FuturisticAppIcon(
                 color = TextPrimary,
                 fontSize = 11.sp,
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                style = androidx.compose.ui.text.TextStyle(
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = Color(0xCC000000),
+                        offset = Offset(0f, 2f),
+                        blurRadius = 6f
+                    )
+                )
             )
         }
     }

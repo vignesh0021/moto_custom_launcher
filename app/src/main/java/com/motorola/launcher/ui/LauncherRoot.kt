@@ -1,6 +1,9 @@
 package com.motorola.launcher.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -8,8 +11,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import com.motorola.launcher.data.repository.AppRepository
 import com.motorola.launcher.system.SystemTelemetryManager
@@ -17,16 +24,25 @@ import com.motorola.launcher.system.WallpaperZoomController
 import com.motorola.launcher.ui.dialog.AppContextDialog
 import com.motorola.launcher.ui.dialog.JarvisDashboardSheet
 import com.motorola.launcher.ui.dialog.QuickAccessCustomizerDialog
+import com.motorola.launcher.ui.dialog.QuickControlsSheet
+import com.motorola.launcher.ui.dialog.SettingsCustomizationDialog
 import com.motorola.launcher.ui.drawer.AppDrawerScreen
 import com.motorola.launcher.ui.gesture.drawerSwipeGesture
 import com.motorola.launcher.ui.gesture.rememberDrawerGestureState
 import com.motorola.launcher.ui.model.AppItem
+import kotlinx.coroutines.launch
+import com.motorola.launcher.ui.theme.MotoLauncherTheme
+import com.motorola.launcher.ui.workspace.StarkWallpaperLayer
 import com.motorola.launcher.ui.workspace.WorkspaceScreen
 import kotlinx.collections.immutable.toImmutableList
 
 /**
- * Root Composable orchestrating Workspace, Drawer, JARVIS Holographic Dashboard,
- * App Context Menus, Quick Access Customizer, and gesture physics for STARK OS.
+ * Root Composable orchestrating the 5 STARK OS — JARVIS Edition views:
+ * 1. Home Workspace with procedural Arc Reactor
+ * 2. Adaptive Holographic App Drawer with categories & search
+ * 3. JARVIS System Dashboard with real device measurements
+ * 4. Radial Quick Controls Menu & Toggles
+ * 5. Settings & Customization (Theme, Wallpapers, Icons, Animations, Toggles)
  */
 @Composable
 fun LauncherRoot(
@@ -38,6 +54,7 @@ fun LauncherRoot(
     val allApps by repository.appsState.collectAsState()
     val quickAccessKeys by repository.preferences.quickAccessKeys.collectAsState()
     val dockKeys by repository.preferences.dockKeys.collectAsState()
+    val customization by repository.preferences.customization.collectAsState()
     val telemetry by telemetryManager.telemetryState.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
@@ -50,10 +67,10 @@ fun LauncherRoot(
     // Resolve customized Dock apps
     val dockApps = remember(allApps, dockKeys) {
         if (dockKeys.isEmpty()) {
-            allApps.take(5).toImmutableList()
+            allApps.take(4).toImmutableList()
         } else {
             val appMap = allApps.associateBy { it.componentKey }
-            dockKeys.mapNotNull { appMap[it] }.ifEmpty { allApps.take(5) }.toImmutableList()
+            dockKeys.mapNotNull { appMap[it] }.ifEmpty { allApps.take(4) }.toImmutableList()
         }
     }
 
@@ -67,99 +84,189 @@ fun LauncherRoot(
         }
     }
 
-    // State for App Context Dialog (Long press menu: App Info, Quick Access, Dock, Uninstall)
+    val coroutineScope = rememberCoroutineScope()
+    var launchingApp by remember { mutableStateOf<AppItem?>(null) }
+    val launchAnimationProgress = remember { Animatable(0f) }
+
+    val launchAppWithAnimation: (AppItem) -> Unit = { item ->
+        launchingApp = item
+        coroutineScope.launch {
+            launchAnimationProgress.snapTo(0f)
+            launchAnimationProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 240, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+            )
+            repository.launchApp(item)
+            launchAnimationProgress.snapTo(0f)
+            launchingApp = null
+        }
+    }
+
+    // Modal and Sheet States
     var selectedAppContextApp by remember { mutableStateOf<AppItem?>(null) }
-
-    // State for Quick Access Customizer sheet
     var showQuickAccessCustomizer by remember { mutableStateOf(false) }
-
-    // State for JARVIS Tactical Diagnostic Dashboard
     var showJarvisDashboard by remember { mutableStateOf(false) }
+    var showQuickControls by remember { mutableStateOf(false) }
+    var showCustomization by remember { mutableStateOf(false) }
 
     val gestureState = rememberDrawerGestureState(wallpaperZoomController)
 
-    // Back button closes dialogs, dashboard, or app drawer before allowing exit
-    BackHandler(enabled = selectedAppContextApp != null || showQuickAccessCustomizer || showJarvisDashboard || gestureState.isDrawerVisible) {
+    // Back button closes active sheets/dialogs or app drawer in priority order
+    BackHandler(
+        enabled = selectedAppContextApp != null ||
+                showQuickAccessCustomizer ||
+                showJarvisDashboard ||
+                showQuickControls ||
+                showCustomization ||
+                gestureState.isDrawerVisible
+    ) {
         when {
             selectedAppContextApp != null -> selectedAppContextApp = null
             showQuickAccessCustomizer -> showQuickAccessCustomizer = false
             showJarvisDashboard -> showJarvisDashboard = false
+            showQuickControls -> showQuickControls = false
+            showCustomization -> showCustomization = false
             searchQuery.isNotEmpty() -> searchQuery = ""
             else -> gestureState.close()
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val density = LocalDensity.current
-        val maxDragPx = with(density) { maxHeight.toPx() }
+    MotoLauncherTheme(customization = customization) {
+        BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+            val density = LocalDensity.current
+            val maxDragPx = with(density) { maxHeight.toPx() }
 
-        val gestureModifier = Modifier
-            .fillMaxSize()
-            .drawerSwipeGesture(gestureState, maxDragPx)
+            val gestureModifier = Modifier
+                .fillMaxSize()
+                .drawerSwipeGesture(gestureState, maxDragPx)
 
-        // Workspace Layer (STARK OS Command Center)
-        WorkspaceScreen(
-            dockApps = dockApps,
-            telemetry = telemetry,
-            progressProvider = { gestureState.progress },
-            onAppClick = { item -> repository.launchApp(item) },
-            onAppLongClick = { item -> selectedAppContextApp = item },
-            onOpenDrawerClick = { gestureState.open() },
-            onOpenDiagnostics = { showJarvisDashboard = true },
-            modifier = gestureModifier
-        )
-
-        // App Drawer Layer (Active when drawer is visible or transitioning)
-        if (gestureState.isDrawerVisible) {
-            AppDrawerScreen(
-                apps = displayedDrawerApps,
-                quickAccessApps = quickAccessApps,
-                searchQuery = searchQuery,
-                onQueryChange = { searchQuery = it },
-                onClearQuery = { searchQuery = "" },
-                progressProvider = { gestureState.progress },
-                maxDragPx = maxDragPx,
-                onAppClick = { item ->
-                    repository.launchApp(item)
-                    gestureState.close()
-                },
-                onAppLongClick = { item -> selectedAppContextApp = item },
-                onCustomizeQuickAccessClick = { showQuickAccessCustomizer = true },
-                onCloseDrawer = { gestureState.close() },
+            // Background: selected HUD wallpaper, or readability scrim over the user's photo
+            StarkWallpaperLayer(
+                preset = customization.wallpaper,
+                accent = customization.themeColor.primary,
                 modifier = Modifier.fillMaxSize()
             )
-        }
 
-        // JARVIS Holographic Diagnostic Modal
-        if (showJarvisDashboard) {
-            JarvisDashboardSheet(
+            // Screen 1: Workspace Layer (STARK OS Command Center)
+            WorkspaceScreen(
+                dockApps = dockApps,
                 telemetry = telemetry,
-                onDismiss = { showJarvisDashboard = false }
+                progressProvider = { gestureState.progress },
+                onAppClick = { item -> launchAppWithAnimation(item) },
+                onAppLongClick = { item -> selectedAppContextApp = item },
+                onOpenDrawerClick = { gestureState.open() },
+                onOpenDiagnostics = { showJarvisDashboard = true },
+                onOpenQuickControls = { showQuickControls = true },
+                onOpenCustomization = { showCustomization = true },
+                modifier = gestureModifier
             )
-        }
 
-        // App Context Dialog (App Info, Quick Access, Dock, Uninstall)
-        selectedAppContextApp?.let { app ->
-            AppContextDialog(
-                app = app,
-                isQuickAccess = repository.preferences.isQuickAccess(app.componentKey),
-                isDockPinned = repository.preferences.isDockPinned(app.componentKey),
-                onOpenAppInfo = { repository.openAppInfo(app) },
-                onToggleQuickAccess = { repository.preferences.toggleQuickAccess(app.componentKey) },
-                onToggleDock = { repository.preferences.toggleDock(app.componentKey) },
-                onRequestUninstall = { repository.requestUninstall(app) },
-                onDismiss = { selectedAppContextApp = null }
-            )
-        }
+            // Screen 2: App Drawer Layer (Active when drawer is visible or transitioning)
+            if (gestureState.isDrawerVisible) {
+                AppDrawerScreen(
+                    apps = displayedDrawerApps,
+                    quickAccessApps = quickAccessApps,
+                    searchQuery = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    onClearQuery = { searchQuery = "" },
+                    progressProvider = { gestureState.progress },
+                    maxDragPx = maxDragPx,
+                    onAppClick = { item ->
+                        launchAppWithAnimation(item)
+                        gestureState.close()
+                    },
+                    onAppLongClick = { item -> selectedAppContextApp = item },
+                    onCustomizeQuickAccessClick = { showQuickAccessCustomizer = true },
+                    onCloseDrawer = { gestureState.close() },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
-        // Quick Access Customizer Modal
-        if (showQuickAccessCustomizer) {
-            QuickAccessCustomizerDialog(
-                allApps = allApps,
-                initialSelectedKeys = quickAccessKeys.ifEmpty { allApps.take(5).map { it.componentKey }.toSet() },
-                onSave = { newKeys -> repository.preferences.setQuickAccessKeys(newKeys) },
-                onDismiss = { showQuickAccessCustomizer = false }
-            )
+            // Screen 3: JARVIS Holographic Diagnostic Modal
+            if (showJarvisDashboard) {
+                JarvisDashboardSheet(
+                    telemetry = telemetry,
+                    onDismiss = { showJarvisDashboard = false }
+                )
+            }
+
+            // Screen 4: Quick Controls Radial HUD & Toggles Modal
+            if (showQuickControls) {
+                QuickControlsSheet(
+                    onDismiss = { showQuickControls = false }
+                )
+            }
+
+            // Screen 5: Settings & Customization ("MAKE IT YOURS") Modal
+            if (showCustomization) {
+                SettingsCustomizationDialog(
+                    preferences = repository.preferences,
+                    customization = customization,
+                    onDismiss = { showCustomization = false }
+                )
+            }
+
+            // App Context Menu (App Info, Quick Access, Dock, Uninstall)
+            selectedAppContextApp?.let { app ->
+                AppContextDialog(
+                    app = app,
+                    isQuickAccess = repository.preferences.isQuickAccess(app.componentKey),
+                    isDockPinned = repository.preferences.isDockPinned(app.componentKey),
+                    onOpenAppInfo = { repository.openAppInfo(app) },
+                    onToggleQuickAccess = { repository.preferences.toggleQuickAccess(app.componentKey) },
+                    onToggleDock = { repository.preferences.toggleDock(app.componentKey) },
+                    onRequestUninstall = { repository.requestUninstall(app) },
+                    onDismiss = { selectedAppContextApp = null }
+                )
+            }
+
+            // Quick Access Customizer Modal
+            if (showQuickAccessCustomizer) {
+                QuickAccessCustomizerDialog(
+                    allApps = allApps,
+                    initialSelectedKeys = quickAccessKeys.ifEmpty { allApps.take(5).map { it.componentKey }.toSet() },
+                    onSave = { newKeys -> repository.preferences.setQuickAccessKeys(newKeys) },
+                    onDismiss = { showQuickAccessCustomizer = false }
+                )
+            }
+
+            // High-Impact Quantum Holographic App Launch Transition
+            // Fires strictly on tap (0% CPU at idle, zero battery consumption when not launching)
+            if (launchAnimationProgress.value > 0f) {
+                val p = launchAnimationProgress.value
+                val primaryColor = customization.heroProtocol.primary
+                val secondaryColor = customization.heroProtocol.secondary
+
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val maxRadius = kotlin.math.max(size.width, size.height)
+
+                    // Quantum warp expanding shockwave
+                    val ringRadius = maxRadius * p
+                    val alpha = (1f - p).coerceIn(0f, 1f)
+
+                    drawCircle(
+                        color = primaryColor.copy(alpha = alpha * 0.7f),
+                        radius = ringRadius,
+                        center = center,
+                        style = Stroke(width = (6f * (1f - p)).coerceAtLeast(1f))
+                    )
+
+                    drawCircle(
+                        color = secondaryColor.copy(alpha = alpha * 0.4f),
+                        radius = ringRadius * 0.85f,
+                        center = center,
+                        style = Stroke(width = (3f * (1f - p)).coerceAtLeast(1f))
+                    )
+
+                    // Iris shutter flash
+                    drawCircle(
+                        color = Color.Black.copy(alpha = (p * 0.65f).coerceIn(0f, 0.65f)),
+                        radius = maxRadius,
+                        center = center
+                    )
+                }
+            }
         }
     }
 }

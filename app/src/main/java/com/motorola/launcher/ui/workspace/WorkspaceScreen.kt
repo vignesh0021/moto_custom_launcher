@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,32 +26,41 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.motorola.launcher.system.SystemTelemetryState
 import com.motorola.launcher.ui.components.FuturisticAppIcon
-import com.motorola.launcher.ui.components.QuickControlsPanel
 import com.motorola.launcher.ui.components.chamferedShape
 import com.motorola.launcher.ui.model.AppItem
-import com.motorola.launcher.ui.theme.StarkCyan
-import com.motorola.launcher.ui.theme.StarkCyanBright
-import com.motorola.launcher.ui.theme.StarkElectricBlue
-import com.motorola.launcher.ui.theme.StarkHudBorder
-import com.motorola.launcher.ui.theme.StarkHudBorderBright
-import com.motorola.launcher.ui.theme.TextDimHud
+import com.motorola.launcher.ui.theme.LocalCustomization
+import com.motorola.launcher.ui.theme.StarkEmerald
+import com.motorola.launcher.ui.theme.TextPrimary
 import com.motorola.launcher.ui.theme.TextSecondary
 import kotlinx.collections.immutable.ImmutableList
 
+/** Soft drop shadow so HUD text stays legible on any wallpaper (including bright photos). */
+internal val HudTextStyle = TextStyle(
+    shadow = Shadow(color = Color(0xE6000000), offset = Offset(0f, 2f), blurRadius = 8f)
+)
+
+/** Dark glass background used behind HUD chips/pills. */
+internal val HudGlass = Color(0x9903070E)
+
 /**
- * Main Home Workspace Composable: "STARK OS — JARVIS Edition".
- * Features Central Arc Reactor with live battery mapping, holographic digital clock,
- * system telemetry readouts, quick settings control bar, and tactical application dock.
+ * Main Home Workspace: "STARK OS — JARVIS Edition".
+ *
+ * Layout is intentionally minimal: clock on top, Arc Reactor in the centre,
+ * two telemetry chips + two action pills below it, and the dock at the bottom.
+ * Nothing floats beside the reactor, so the wallpaper and the core stay clear.
  */
 @Composable
 fun WorkspaceScreen(
@@ -61,9 +71,22 @@ fun WorkspaceScreen(
     onAppLongClick: (AppItem) -> Unit,
     onOpenDrawerClick: () -> Unit,
     onOpenDiagnostics: () -> Unit,
+    onOpenQuickControls: () -> Unit,
+    onOpenCustomization: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
+    val customization = LocalCustomization.current
+    val themeColor = customization.themeColor
+
+    val tap: (() -> Unit) -> () -> Unit = { action ->
+        {
+            if (customization.hapticFeedback) {
+                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            }
+            action()
+        }
+    }
 
     Box(
         modifier = modifier
@@ -78,159 +101,61 @@ fun WorkspaceScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // Motorola 53-degree Curved Waterfall Edge Ambient Glow (Left Edge)
+        // Curved-edge ambient glow (left / right) — very subtle
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .fillMaxHeight(0.7f)
-                .width(3.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            StarkCyan.copy(alpha = 0.5f),
-                            Color.Transparent
-                        )
-                    )
-                )
+                .fillMaxHeight(0.5f)
+                .width(2.dp)
+                .background(Brush.horizontalGradient(listOf(themeColor.glow, Color.Transparent)))
         )
-
-        // Motorola Curved Waterfall Edge Ambient Glow (Right Edge)
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .fillMaxHeight(0.7f)
-                .width(3.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            StarkElectricBlue.copy(alpha = 0.5f)
-                        )
-                    )
-                )
+                .fillMaxHeight(0.5f)
+                .width(2.dp)
+                .background(Brush.horizontalGradient(listOf(Color.Transparent, themeColor.glow)))
         )
 
-        // Primary Vertical Command Center Layout
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // TOP SECTION: Digital Holographic Clock & Protocol Header
+            // TOP: Clock
             DigitalClock(
                 telemetry = telemetry,
                 modifier = Modifier.padding(top = 8.dp)
             )
 
-            // CENTER SECTION: Interactive Procedural Arc Reactor Core
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                ReactorCore(
-                    telemetry = telemetry,
-                    onCoreClick = onOpenDiagnostics,
-                    size = 230.dp
-                )
+            // CENTRE: All-In-One Marvel Command Core (Battery + RAM + Controls + Settings integrated)
+            ReactorCore(
+                telemetry = telemetry,
+                onCoreClick = onOpenDiagnostics,
+                onOpenQuickControls = onOpenQuickControls,
+                onOpenCustomization = onOpenCustomization,
+                size = 230.dp
+            )
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Tactical System Metrics Status Strip
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0x1F050B16))
-                        .border(1.dp, StarkHudBorder.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "MEM: ${telemetry.ramUsedFormatted}",
-                        color = StarkCyanBright,
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 0.8.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "•", color = TextDimHud, fontSize = 10.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "STORAGE: ${telemetry.storageFreeFormatted} FREE",
-                        color = TextSecondary,
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 0.8.sp
-                    )
-                }
-            }
-
-            // BOTTOM SECTION: Quick Controls, Swipe Pill & Tactical Dock
+            // BOTTOM: Drawer trigger + dock
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Quick System Settings Bar
-                QuickControlsPanel(
-                    onOpenDiagnostics = onOpenDiagnostics,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
-
-                // Holographic Drawer Invocation Banner
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0x1F00F0FF))
-                        .border(1.dp, StarkHudBorder, RoundedCornerShape(12.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                onOpenDrawerClick()
-                            }
-                        )
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "▲",
-                        color = StarkCyan,
-                        fontSize = 9.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "ALL APPLICATIONS",
-                        color = StarkCyan,
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.8.sp
-                    )
-                }
+                HudPill(text = "▲  ALL APPS", onClick = tap(onOpenDrawerClick))
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Floating Tactical Dock Container
                 val dockShape = chamferedShape(cutSize = 20f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clip(dockShape)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0x33060C18),
-                                    Color(0x5903060C)
-                                )
-                            )
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = StarkHudBorderBright,
-                            shape = dockShape
-                        )
+                        .background(HudGlass)
+                        .border(1.dp, themeColor.primary.copy(alpha = 0.45f), dockShape)
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     Row(
@@ -238,24 +163,56 @@ fun WorkspaceScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        for (item in dockApps.take(5)) {
+                        for (item in dockApps.take(4)) {
                             FuturisticAppIcon(
                                 app = item,
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                    onAppClick(item)
-                                },
+                                onClick = tap { onAppClick(item) },
                                 onLongClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    if (customization.hapticFeedback) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    }
                                     onAppLongClick(item)
                                 },
                                 iconSize = 46.dp,
-                                showLabel = false
+                                showLabel = true
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HudPill(
+    text: String,
+    onClick: () -> Unit
+) {
+    val themeColor = LocalCustomization.current.themeColor
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier = Modifier
+            .widthIn(min = 112.dp)
+            .clip(shape)
+            .background(HudGlass)
+            .border(1.dp, themeColor.primary.copy(alpha = 0.6f), shape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = themeColor.primary,
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+            style = HudTextStyle
+        )
     }
 }

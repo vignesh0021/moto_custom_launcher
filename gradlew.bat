@@ -59,12 +59,18 @@ echo.
 goto fail
 
 :execute
-@rem Setup the command line
+@rem Sanitize Windows PATH to avoid unquoted space parsing errors in AGP Test Workers
+set PATH=%PATH:Program Files (x86)=PROGRA~2%
+set PATH=%PATH:Program Files=PROGRA~1%
+set PATH=%PATH:Microsoft VS Code=MICROS~1%
+set PATH=%PATH:Azure Data Studio=AZURED~1%
 
+@rem Setup the command line
 set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 
 @rem Execute Gradle
 "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+exit /b %ERRORLEVEL%
 
 :fail
 exit /b 1

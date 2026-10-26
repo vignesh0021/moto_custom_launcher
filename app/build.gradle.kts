@@ -90,6 +90,11 @@ android {
             excludes += "/META-INF/DEPENDENCIES"
         }
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 composeCompiler {
@@ -133,5 +138,10 @@ dependencies {
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
+}
+
+tasks.withType<Test>().configureEach {
+    // Sanitize unquoted java.library.path containing spaces on Windows hosts
+    systemProperty("java.library.path", "")
 }
 

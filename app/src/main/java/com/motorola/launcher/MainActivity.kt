@@ -27,7 +27,6 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
-    private var display144HzManager: Display144HzManager? = null
     private var wallpaperZoomController: WallpaperZoomController? = null
     private var curvedEdgeGestureController: CurvedEdgeGestureController? = null
     private var repository: AppRepository? = null
@@ -59,24 +58,19 @@ class MainActivity : ComponentActivity() {
             wallpaperZoomController = it
         }
 
-        // 3. Lock 144Hz Display Mode (6.944ms VSYNC cadence)
-        display144HzManager = Display144HzManager(this).also {
-            it.enforce144HzMode()
-        }
-
-        // 4. Curved Edge Palm Exclusion Controller
+        // 3. Curved Edge Palm Exclusion Controller
         try {
             curvedEdgeGestureController = CurvedEdgeGestureController(window.decorView)
         } catch (e: Throwable) {
             Log.w(TAG, "Curved edge exclusion initialization failed: ${e.message}")
         }
 
-        // 5. Reactive Repository & Icon Hydration
+        // 4. Reactive Repository & Icon Hydration
         val repo = AppRepository(applicationContext).also {
             repository = it
         }
 
-        // 6. Live System Telemetry Engine
+        // 5. Live System Telemetry Engine (Lifecycle-aware)
         val telem = com.motorola.launcher.system.SystemTelemetryManager(applicationContext).also {
             telemetryManager = it
         }
@@ -95,7 +89,6 @@ class MainActivity : ComponentActivity() {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         wallpaperZoomController?.onWindowAttached(window.decorView)
-        display144HzManager?.enforce144HzMode()
     }
 
     override fun onDetachedFromWindow() {
@@ -103,10 +96,24 @@ class MainActivity : ComponentActivity() {
         wallpaperZoomController?.onWindowDetached()
     }
 
+    override fun onStart() {
+        super.onStart()
+        telemetryManager?.startPeriodicCollection()
+    }
+
     override fun onResume() {
         super.onResume()
-        // Re-enforce 144Hz mode upon returning to home screen
-        display144HzManager?.enforce144HzMode()
+        telemetryManager?.startPeriodicCollection()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        telemetryManager?.stopPeriodicCollection()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        telemetryManager?.stopPeriodicCollection()
     }
 
     /**
