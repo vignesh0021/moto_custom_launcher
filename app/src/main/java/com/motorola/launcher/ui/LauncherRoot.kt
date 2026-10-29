@@ -90,6 +90,7 @@ fun LauncherRoot(
 
     val coroutineScope = rememberCoroutineScope()
     var launchingApp by remember { mutableStateOf<AppItem?>(null) }
+    val launchAnimationProgress = remember { Animatable(0f) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val isReducedMotion = remember(customization, context) {
         com.motorola.launcher.system.LauncherFeedback.isReducedMotion(context, customization)
