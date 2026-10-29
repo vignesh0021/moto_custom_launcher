@@ -106,16 +106,49 @@ fun QuickControlsSheet(
                     .verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header
-                Text(
-                    text = "QUICK CONTROLS",
-                    color = TextPrimary,
-                    fontSize = 15.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.5.sp,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
+                // Header with Quick Close
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "QUICK CONTROLS",
+                        color = TextPrimary,
+                        fontSize = 14.5.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.2.sp
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(marvelTheme.colors.subtle)
+                            .border(1.dp, marvelTheme.colors.primary, CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    if (customization.hapticFeedback) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    }
+                                    onDismiss()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✕",
+                            color = marvelTheme.colors.bright,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
                 // 1. Central Radial HUD Menu (Arc Reactor in center with 6 surrounding arc sectors)
                 Box(

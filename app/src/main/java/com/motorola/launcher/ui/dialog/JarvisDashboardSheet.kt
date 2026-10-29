@@ -97,23 +97,60 @@ fun JarvisDashboardSheet(
                     .verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header: Dynamic Marvel Theme System Dashboard Title & Subtitle
-                Text(
-                    text = marvelTheme.dashboardStyle.title,
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp
-                )
-                Text(
-                    text = marvelTheme.dashboardStyle.subtitle,
-                    color = marvelTheme.colors.primary,
-                    fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 1.2.sp,
-                    modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
-                )
+                // Header: Dynamic Marvel Theme System Dashboard Title & Subtitle + Quick Close
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = marvelTheme.dashboardStyle.title,
+                            color = TextPrimary,
+                            fontSize = 13.5.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.8.sp
+                        )
+                        Text(
+                            text = marvelTheme.dashboardStyle.subtitle,
+                            color = marvelTheme.colors.primary,
+                            fontSize = 8.5.sp,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.2.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+
+                    // Top Quick Close Button
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(marvelTheme.colors.subtle)
+                            .border(1.dp, marvelTheme.colors.primary, CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    if (customization.hapticFeedback) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    }
+                                    onDismiss()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✕",
+                            color = marvelTheme.colors.bright,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
                 // 1. Phone Wireframe Blueprint Card
                 Box(

@@ -17,6 +17,8 @@ import com.motorola.launcher.system.WallpaperZoomController
 import com.motorola.launcher.ui.LauncherRoot
 import com.motorola.launcher.ui.theme.MotoLauncherTheme
 
+import kotlinx.coroutines.flow.MutableSharedFlow
+
 /**
  * Host Activity for the Motorola Edge 50 Custom Launcher.
  * Plumbs system hardware wallpaper, locks 144Hz refresh rate, and manages curved palm rejection.
@@ -27,6 +29,7 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
+    private val homePressEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var wallpaperZoomController: WallpaperZoomController? = null
     private var curvedEdgeGestureController: CurvedEdgeGestureController? = null
     private var repository: AppRepository? = null
@@ -80,7 +83,8 @@ class MainActivity : ComponentActivity() {
                 LauncherRoot(
                     repository = repo,
                     wallpaperZoomController = wpController,
-                    telemetryManager = telem
+                    telemetryManager = telem,
+                    homePressEvents = homePressEvents
                 )
             }
         }
@@ -123,6 +127,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (Intent.ACTION_MAIN == intent.action && intent.hasCategory(Intent.CATEGORY_HOME)) {
             wallpaperZoomController?.updateDrawerProgress(0.0f)
+            homePressEvents.tryEmit(Unit)
         }
     }
 

@@ -52,6 +52,7 @@ fun LauncherRoot(
     repository: AppRepository,
     wallpaperZoomController: WallpaperZoomController,
     telemetryManager: SystemTelemetryManager,
+    homePressEvents: kotlinx.coroutines.flow.SharedFlow<Unit>? = null,
     modifier: Modifier = Modifier
 ) {
     val allApps by repository.appsState.collectAsState()
@@ -147,6 +148,20 @@ fun LauncherRoot(
             showCustomization -> showCustomization = false
             searchQuery.isNotEmpty() -> searchQuery = ""
             else -> gestureState.close()
+        }
+    }
+
+    // Reset back to main workspace when system Home button (center click / nav bar) is pressed
+    LaunchedEffect(homePressEvents) {
+        homePressEvents?.collect {
+            showHydrationReminder = false
+            selectedAppContextApp = null
+            showQuickAccessCustomizer = false
+            showJarvisDashboard = false
+            showQuickControls = false
+            showCustomization = false
+            searchQuery = ""
+            gestureState.close()
         }
     }
 

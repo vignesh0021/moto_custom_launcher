@@ -302,7 +302,33 @@ fun AppDrawerScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(bottom = 24.dp)
+                            .padding(bottom = 44.dp)
+                    )
+                }
+
+                // Bottom Center Back To Workspace Pill
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 6.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(marvelTheme.colors.surface)
+                        .border(1.dp, marvelTheme.colors.hudBorderBright, RoundedCornerShape(16.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onCloseDrawer
+                        )
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "▼ BACK TO WORKSPACE",
+                        color = marvelTheme.colors.bright,
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
                     )
                 }
             }
