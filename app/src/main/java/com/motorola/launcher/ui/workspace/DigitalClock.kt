@@ -79,7 +79,16 @@ fun DigitalClock(
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
+        Text(
+            text = marvelTheme.hudConfig.headerPrefix,
+            color = marvelTheme.colors.bright,
+            fontSize = 10.5.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.8.sp,
+            style = HudTextStyle,
+            modifier = Modifier.padding(bottom = 3.dp)
+        )
         Text(
             text = dateText,
             color = TextSecondary,

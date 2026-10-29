@@ -93,15 +93,20 @@ fun FuturisticAppIcon(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = {
-                    if (customization.hapticFeedback) {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    }
+                    com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                        view = view,
+                        hapticEnabled = customization.hapticFeedback,
+                        soundEnabled = customization.soundEffectsEnabled
+                    )
                     onClick()
                 },
                 onLongClick = {
-                    if (customization.hapticFeedback) {
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    }
+                    com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                        view = view,
+                        hapticEnabled = customization.hapticFeedback,
+                        soundEnabled = customization.soundEffectsEnabled,
+                        isLongPress = true
+                    )
                     onLongClick()
                 }
             ),

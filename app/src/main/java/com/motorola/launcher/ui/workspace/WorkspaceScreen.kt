@@ -81,9 +81,11 @@ fun WorkspaceScreen(
 
     val tap: (() -> Unit) -> () -> Unit = { action ->
         {
-            if (customization.hapticFeedback) {
-                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-            }
+            com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                view = view,
+                hapticEnabled = customization.hapticFeedback,
+                soundEnabled = customization.soundEffectsEnabled
+            )
             action()
         }
     }
@@ -170,9 +172,12 @@ fun WorkspaceScreen(
                                 app = item,
                                 onClick = tap { onAppClick(item) },
                                 onLongClick = {
-                                    if (customization.hapticFeedback) {
-                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                    }
+                                    com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                                        view = view,
+                                        hapticEnabled = customization.hapticFeedback,
+                                        soundEnabled = customization.soundEffectsEnabled,
+                                        isLongPress = true
+                                    )
                                     onAppLongClick(item)
                                 },
                                 iconSize = dockIconSize,

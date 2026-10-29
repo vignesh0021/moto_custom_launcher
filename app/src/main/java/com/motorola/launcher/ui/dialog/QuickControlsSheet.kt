@@ -114,14 +114,24 @@ fun QuickControlsSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "QUICK CONTROLS",
-                        color = TextPrimary,
-                        fontSize = 14.5.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.2.sp
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "QUICK CONTROLS",
+                            color = TextPrimary,
+                            fontSize = 14.5.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.2.sp
+                        )
+                        Text(
+                            text = "${marvelTheme.name.uppercase()} // TACTICAL CONTROLS",
+                            color = marvelTheme.colors.primary,
+                            fontSize = 9.sp,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.2.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
 
                     Box(
                         modifier = Modifier
@@ -150,7 +160,7 @@ fun QuickControlsSheet(
                     }
                 }
 
-                // 1. Central Radial HUD Menu (Arc Reactor in center with 6 surrounding arc sectors)
+                // 1. Central Radial HUD Menu (Arc / Hex reticle with 6 surrounding sectors)
                 Box(
                     modifier = Modifier
                         .size(260.dp),
@@ -163,7 +173,7 @@ fun QuickControlsSheet(
 
                         // Outer dashed perimeter
                         drawCircle(
-                            color = themeColor.subtle,
+                            color = marvelTheme.colors.subtle,
                             radius = r * 0.95f,
                             center = c,
                             style = Stroke(1.dp.toPx())
@@ -176,7 +186,7 @@ fun QuickControlsSheet(
                         for (i in 0 until totalSegments) {
                             val startAngle = -90f + (i * 60f) + (gap / 2f)
                             drawArc(
-                                color = if (i % 2 == 0) themeColor.glow else StarkReactorRed.copy(alpha = 0.4f),
+                                color = if (i % 2 == 0) marvelTheme.colors.glow else marvelTheme.colors.secondary.copy(alpha = 0.4f),
                                 startAngle = startAngle,
                                 sweepAngle = segmentSweep,
                                 useCenter = false,
@@ -188,36 +198,28 @@ fun QuickControlsSheet(
 
                         // Inner concentric reticle
                         drawCircle(
-                            color = themeColor.primary.copy(alpha = 0.5f),
+                            color = marvelTheme.colors.primary.copy(alpha = 0.5f),
                             radius = r * 0.45f,
                             center = c,
                             style = Stroke(1.5.dp.toPx())
                         )
                     }
 
-                    // Central Mini Arc Reactor Core Reticle (▼)
+                    // Central Mini Superhero Core Reticle
                     Box(
                         modifier = Modifier
                             .size(70.dp)
                             .clip(CircleShape)
-                            .background(Color(0x3300E5FF))
-                            .border(1.5.dp, themeColor.primary, CircleShape),
+                            .background(marvelTheme.colors.subtle)
+                            .border(1.5.dp, marvelTheme.colors.primary, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Canvas(modifier = Modifier.size(34.dp)) {
-                            val c = Offset(size.width / 2f, size.height / 2f)
-                            val tr = size.minDimension * 0.42f
-                            val p1 = Offset(c.x, c.y + tr)
-                            val p2 = Offset(c.x + tr * cos((210.0 * PI / 180.0).toFloat()), c.y + tr * sin((210.0 * PI / 180.0).toFloat()))
-                            val p3 = Offset(c.x + tr * cos((330.0 * PI / 180.0).toFloat()), c.y + tr * sin((330.0 * PI / 180.0).toFloat()))
-                            val path = Path().apply {
-                                moveTo(p1.x, p1.y)
-                                lineTo(p2.x, p2.y)
-                                lineTo(p3.x, p3.y)
-                                close()
-                            }
-                            drawPath(path, color = themeColor.bright, style = Stroke(2.dp.toPx()))
-                        }
+                        MiniThemeInsignia(
+                            geometry = marvelTheme.coreGeometry,
+                            primary = marvelTheme.colors.primary,
+                            secondary = marvelTheme.colors.secondary,
+                            modifier = Modifier.size(36.dp)
+                        )
                     }
 
                     // 6 Positioned Radial Buttons

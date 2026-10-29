@@ -236,4 +236,46 @@ class MarvelThemeEngineTest {
             assertTrue(protocol.heroName.isNotBlank())
         }
     }
+
+    @Test
+    fun testDistinctHeroIdentitiesAcrossAllThemes() {
+        val themes = MarvelThemeRegistry.getAllThemes()
+        val ids = themes.map { it.id }.toSet()
+        assertEquals("Each theme must have a unique ID", themes.size, ids.size)
+
+        val geometries = themes.map { it.coreGeometry }.toSet()
+        assertEquals("Each theme must have a unique signature core geometry", themes.size, geometries.size)
+
+        val headerPrefixes = themes.map { it.hudConfig.headerPrefix }.toSet()
+        assertEquals("Each theme must transform the HUD header prefix uniquely", themes.size, headerPrefixes.size)
+
+        val dockPills = themes.map { it.dockStyle.pillText }.toSet()
+        assertEquals("Each theme must transform the dock action pill text uniquely", themes.size, dockPills.size)
+    }
+
+    @Test
+    fun testThemeDockPillTransformation() {
+        assertEquals("▲ ALL APPS", MarvelThemeRegistry.getTheme("iron_man").dockStyle.pillText)
+        assertEquals("▲ STRATEGIC APPS", MarvelThemeRegistry.getTheme("captain_america").dockStyle.pillText)
+        assertEquals("▲ REALM APPS", MarvelThemeRegistry.getTheme("thor").dockStyle.pillText)
+        assertEquals("▲ WAKANDA APPS", MarvelThemeRegistry.getTheme("black_panther").dockStyle.pillText)
+        assertEquals("▲ WEB APPS", MarvelThemeRegistry.getTheme("spider_man").dockStyle.pillText)
+        assertEquals("▲ MYSTIC APPS", MarvelThemeRegistry.getTheme("doctor_strange").dockStyle.pillText)
+        assertEquals("▲ TITAN APPS", MarvelThemeRegistry.getTheme("hulk").dockStyle.pillText)
+        assertEquals("▲ COVERT APPS", MarvelThemeRegistry.getTheme("black_widow").dockStyle.pillText)
+        assertEquals("▲ AVENGERS APPS", MarvelThemeRegistry.getTheme("avengers_unified").dockStyle.pillText)
+    }
+
+    @Test
+    fun testThemeHeaderTransformation() {
+        assertEquals("STARK OS // MARK VII", MarvelThemeRegistry.getTheme("iron_man").hudConfig.headerPrefix)
+        assertEquals("SHIELD OS // FIRST AVENGER", MarvelThemeRegistry.getTheme("captain_america").hudConfig.headerPrefix)
+        assertEquals("ASGARD OS // MJOLNIR THUNDER", MarvelThemeRegistry.getTheme("thor").hudConfig.headerPrefix)
+        assertEquals("WAKANDA OS // KINETIC PANTHER", MarvelThemeRegistry.getTheme("black_panther").hudConfig.headerPrefix)
+        assertEquals("WEB MATRIX // IRON SPIDER", MarvelThemeRegistry.getTheme("spider_man").hudConfig.headerPrefix)
+        assertEquals("SANCTUM OS // AGAMOTTO", MarvelThemeRegistry.getTheme("doctor_strange").hudConfig.headerPrefix)
+        assertEquals("GAMMA OS // TITAN PROTOCOL", MarvelThemeRegistry.getTheme("hulk").hudConfig.headerPrefix)
+        assertEquals("RED ROOM // TACTICAL SPEC", MarvelThemeRegistry.getTheme("black_widow").hudConfig.headerPrefix)
+        assertEquals("AVENGERS PROTOCOL // ASSEMBLE", MarvelThemeRegistry.getTheme("avengers_unified").hudConfig.headerPrefix)
+    }
 }

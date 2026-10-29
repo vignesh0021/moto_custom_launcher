@@ -88,6 +88,7 @@ fun AppDrawerScreen(
     val customization = LocalCustomization.current
     val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val themeColor = customization.themeColor
+    val view = LocalView.current
     var selectedTab by remember { mutableStateOf("ALL") }
 
     // Filter apps based on active tab
@@ -227,6 +228,11 @@ fun AppDrawerScreen(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                                 onClick = {
+                                    com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                                        view = view,
+                                        hapticEnabled = customization.hapticFeedback,
+                                        soundEnabled = customization.soundEffectsEnabled
+                                    )
                                     selectedTab = tab
                                     scope.launch { gridState.scrollToItem(0) }
                                 }
@@ -317,7 +323,14 @@ fun AppDrawerScreen(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = onCloseDrawer
+                            onClick = {
+                                com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                                    view = view,
+                                    hapticEnabled = customization.hapticFeedback,
+                                    soundEnabled = customization.soundEffectsEnabled
+                                )
+                                onCloseDrawer()
+                            }
                         )
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center

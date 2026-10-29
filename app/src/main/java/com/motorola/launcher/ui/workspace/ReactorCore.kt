@@ -132,9 +132,11 @@ fun ReactorCore(
     }
 
     val tapFeedback: () -> Unit = {
-        if (customization.hapticFeedback) {
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        }
+        com.motorola.launcher.system.LauncherFeedback.performFeedback(
+            view = view,
+            hapticEnabled = customization.hapticFeedback,
+            soundEnabled = customization.soundEffectsEnabled
+        )
     }
 
     Column(

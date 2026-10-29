@@ -90,16 +90,21 @@ fun LauncherRoot(
 
     val coroutineScope = rememberCoroutineScope()
     var launchingApp by remember { mutableStateOf<AppItem?>(null) }
-    val launchAnimationProgress = remember { Animatable(0f) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isReducedMotion = remember(customization, context) {
+        com.motorola.launcher.system.LauncherFeedback.isReducedMotion(context, customization)
+    }
 
     val launchAppWithAnimation: (AppItem) -> Unit = { item ->
         launchingApp = item
         coroutineScope.launch {
-            launchAnimationProgress.snapTo(0f)
-            launchAnimationProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 240, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-            )
+            if (!isReducedMotion) {
+                launchAnimationProgress.snapTo(0f)
+                launchAnimationProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                )
+            }
             repository.launchApp(item)
             launchAnimationProgress.snapTo(0f)
             launchingApp = null
