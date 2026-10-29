@@ -131,7 +131,7 @@ class MarvelThemeEngineTest {
             assertTrue("Theme ID must not be blank", theme.id.isNotBlank())
             assertTrue("Theme Name must not be blank", theme.name.isNotBlank())
             assertTrue("Protocol title must not be blank", theme.protocolTitle.isNotBlank())
-            assertTrue("Description must not be blank", theme.description.isNotBlank())
+            assertTrue("Hero name must not be blank", theme.heroName.isNotBlank())
 
             // Colors token completeness
             assertNotNull(theme.colors.primary)
@@ -157,29 +157,33 @@ class MarvelThemeEngineTest {
             assertNotNull(theme.wallpaperConfig.ambientEdgeGlow)
 
             // Icon treatment
-            assertNotNull(theme.iconTreatment.frameShape)
-            assertNotNull(theme.iconTreatment.insigniaInCorner)
-            assertNotNull(theme.iconTreatment.borderBrush)
+            assertNotNull(theme.iconTreatment.cornerRadius)
+            assertTrue("Insignia type must not be blank", theme.iconTreatment.insigniaType.isNotBlank())
+            assertTrue("Border alpha must be between 0 and 1", theme.iconTreatment.borderAlpha in 0f..1f)
 
             // Dock style
-            assertNotNull(theme.dockStyle.backgroundBrush)
-            assertNotNull(theme.dockStyle.borderColor)
-            assertTrue("Dock pill label must not be blank", theme.dockStyle.dockPillLabel.isNotBlank())
+            assertNotNull(theme.dockStyle.glassColor)
+            assertTrue("Border alpha must be between 0 and 1", theme.dockStyle.borderAlpha in 0f..1f)
+            assertTrue("Dock pill label must not be blank", theme.dockStyle.pillText.isNotBlank())
 
             // Drawer style
-            assertNotNull(theme.drawerStyle.headerAccent)
-            assertNotNull(theme.drawerStyle.tabIndicatorColor)
+            assertNotNull(theme.drawerStyle.categoryAccent)
+            assertNotNull(theme.drawerStyle.activeTabIndicator)
+            assertTrue("Search placeholder must not be blank", theme.drawerStyle.searchPlaceholder.isNotBlank())
 
             // Dashboard style
-            assertNotNull(theme.dashboardStyle.accentGlow)
-            assertTrue("Dashboard header must not be blank", theme.dashboardStyle.blueprintLabel.isNotBlank())
+            assertTrue("Dashboard title must not be blank", theme.dashboardStyle.title.isNotBlank())
+            assertTrue("Dashboard subtitle must not be blank", theme.dashboardStyle.subtitle.isNotBlank())
+            assertTrue("Dashboard blueprint label must not be blank", theme.dashboardStyle.blueprintLabel.isNotBlank())
 
             // Animation config
-            assertTrue("Transition duration must be positive", theme.animationConfig.transitionDurationMs > 0)
-            assertTrue("Particle density must be >= 0", theme.animationConfig.particleDensityMultiplier >= 0f)
+            assertTrue("Pulse duration must be positive", theme.animationConfig.pulseDurationMs > 0)
+            assertTrue("Burst duration must be positive", theme.animationConfig.burstDurationMs > 0)
+            assertTrue("Particle density must be >= 0", theme.animationConfig.particleDensity >= 0f)
 
             // Sound and Haptic config
             assertNotNull(theme.soundHapticConfig)
+            assertTrue("Sound profile ID must not be blank", theme.soundHapticConfig.soundProfileId.isNotBlank())
         }
     }
 
@@ -189,7 +193,7 @@ class MarvelThemeEngineTest {
         for (theme in MarvelThemeRegistry.getAllThemes()) {
             assertFalse(
                 "Sound effects should be disabled by default for theme ${theme.id}",
-                theme.soundHapticConfig.soundEffectsEnabled
+                theme.soundHapticConfig.soundEnabledDefault
             )
         }
     }
@@ -229,7 +233,7 @@ class MarvelThemeEngineTest {
             assertNotNull(protocol.primary)
             assertNotNull(protocol.secondary)
             assertNotNull(protocol.bright)
-            assertTrue(protocol.displayName.isNotBlank())
+            assertTrue(protocol.heroName.isNotBlank())
         }
     }
 }
