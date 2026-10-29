@@ -99,6 +99,8 @@ private fun getHeroDrawables(hero: MarvelHeroProtocol): Pair<Int, Int> {
         MarvelHeroProtocol.DOCTOR_STRANGE -> Pair(R.drawable.hero_doctor_strange_front, R.drawable.hero_doctor_strange_side)
         MarvelHeroProtocol.SPIDER_MAN -> Pair(R.drawable.hero_spider_man_front, R.drawable.hero_spider_man_side)
         MarvelHeroProtocol.BLACK_WIDOW -> Pair(R.drawable.hero_black_widow_front, R.drawable.hero_black_widow_side)
+        MarvelHeroProtocol.AVENGERS_UNIFIED -> Pair(R.drawable.hero_iron_man_front, R.drawable.hero_iron_man_side)
+        else -> Pair(R.drawable.hero_iron_man_front, R.drawable.hero_iron_man_side)
     }
 }
 
