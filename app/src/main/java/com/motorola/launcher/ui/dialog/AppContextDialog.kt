@@ -62,6 +62,7 @@ fun AppContextDialog(
     onDismiss: () -> Unit
 ) {
     val view = LocalView.current
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -83,8 +84,8 @@ fun AppContextDialog(
                     width = 1.dp,
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            MotoCyanAccent.copy(alpha = 0.6f),
-                            MotoElectricViolet.copy(alpha = 0.6f)
+                            marvelTheme.colors.primary.copy(alpha = 0.6f),
+                            marvelTheme.colors.secondary.copy(alpha = 0.6f)
                         )
                     ),
                     shape = RoundedCornerShape(28.dp)
@@ -107,7 +108,7 @@ fun AppContextDialog(
                             .border(
                                 width = 1.5.dp,
                                 brush = Brush.sweepGradient(
-                                    listOf(MotoCyanAccent, MotoElectricViolet, MotoCyanAccent)
+                                    listOf(marvelTheme.colors.primary, marvelTheme.colors.secondary, marvelTheme.colors.primary)
                                 ),
                                 shape = CircleShape
                             ),
@@ -216,7 +217,7 @@ fun AppContextDialog(
                 ContextMenuItem(
                     icon = "📌",
                     title = if (isDockPinned) "Remove from Dock" else "Pin to Dock",
-                    subtitle = if (isDockPinned) "Currently on home screen dock" else "Show in bottom dock (max 5)",
+                    subtitle = if (isDockPinned) "Currently on home screen dock" else "Show in bottom dock (max 6)",
                     badgeText = if (isDockPinned) "IN DOCK" else null,
                     accentColor = if (isDockPinned) MotoElectricViolet else MotoCyanAccent,
                     onClick = {

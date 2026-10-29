@@ -6,7 +6,6 @@ import androidx.benchmark.macro.FrameTimingMetric
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.filters.LargeTest
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
 import org.junit.Rule
@@ -18,7 +17,6 @@ import org.junit.runner.RunWith
  * Asserts that the 99th percentile frame duration remains strictly below 6.94ms
  * during continuous app-drawer fling gestures on the Moto Edge 50 curved pOLED display.
  */
-@LargeTest
 @RunWith(AndroidJUnit4::class)
 class FramePacing144HzBenchmark {
 

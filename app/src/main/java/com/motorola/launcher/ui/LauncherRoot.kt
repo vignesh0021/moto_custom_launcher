@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import com.motorola.launcher.data.repository.AppRepository
 import com.motorola.launcher.system.SystemTelemetryManager
 import com.motorola.launcher.system.WallpaperZoomController
+import com.motorola.launcher.ui.components.MarvelHydrationCompanion
 import com.motorola.launcher.ui.dialog.AppContextDialog
 import com.motorola.launcher.ui.dialog.JarvisDashboardSheet
 import com.motorola.launcher.ui.dialog.QuickAccessCustomizerDialog
@@ -30,6 +32,7 @@ import com.motorola.launcher.ui.drawer.AppDrawerScreen
 import com.motorola.launcher.ui.gesture.drawerSwipeGesture
 import com.motorola.launcher.ui.gesture.rememberDrawerGestureState
 import com.motorola.launcher.ui.model.AppItem
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.motorola.launcher.ui.theme.MotoLauncherTheme
 import com.motorola.launcher.ui.workspace.StarkWallpaperLayer
@@ -37,10 +40,10 @@ import com.motorola.launcher.ui.workspace.WorkspaceScreen
 import kotlinx.collections.immutable.toImmutableList
 
 /**
- * Root Composable orchestrating the 5 STARK OS — JARVIS Edition views:
+ * Root Composable orchestrating the 5 STARK OS views:
  * 1. Home Workspace with procedural Arc Reactor
  * 2. Adaptive Holographic App Drawer with categories & search
- * 3. JARVIS System Dashboard with real device measurements
+ * 3. System Dashboard with real device measurements
  * 4. Radial Quick Controls Menu & Toggles
  * 5. Settings & Customization (Theme, Wallpapers, Icons, Animations, Toggles)
  */
@@ -64,13 +67,13 @@ fun LauncherRoot(
         if (searchQuery.isBlank()) allApps else searchResults
     }
 
-    // Resolve customized Dock apps
+    // Resolve customized Dock apps (up to 6 apps)
     val dockApps = remember(allApps, dockKeys) {
         if (dockKeys.isEmpty()) {
-            allApps.take(4).toImmutableList()
+            allApps.take(6).toImmutableList()
         } else {
             val appMap = allApps.associateBy { it.componentKey }
-            dockKeys.mapNotNull { appMap[it] }.ifEmpty { allApps.take(4) }.toImmutableList()
+            dockKeys.mapNotNull { appMap[it] }.ifEmpty { allApps.take(6) }.toImmutableList()
         }
     }
 
@@ -102,18 +105,33 @@ fun LauncherRoot(
         }
     }
 
-    // Modal and Sheet States
+    // Modal, Sheet, and Companion States
     var selectedAppContextApp by remember { mutableStateOf<AppItem?>(null) }
     var showQuickAccessCustomizer by remember { mutableStateOf(false) }
     var showJarvisDashboard by remember { mutableStateOf(false) }
     var showQuickControls by remember { mutableStateOf(false) }
     var showCustomization by remember { mutableStateOf(false) }
+    var showHydrationReminder by remember { mutableStateOf(false) }
+
+    // Marvel Hydration Companion check with user-configurable interval
+    LaunchedEffect(customization.hydrationReminderEnabled, customization.hydrationIntervalMinutes) {
+        if (!customization.hydrationReminderEnabled) return@LaunchedEffect
+        while (true) {
+            val now = System.currentTimeMillis()
+            val intervalMillis = customization.hydrationIntervalMinutes.coerceAtLeast(1) * 60 * 1000L
+            if (now - customization.lastHydrationHour >= intervalMillis) {
+                showHydrationReminder = true
+            }
+            delay(30000L) // Lightweight 30-second ticker, zero battery drain
+        }
+    }
 
     val gestureState = rememberDrawerGestureState(wallpaperZoomController)
 
     // Back button closes active sheets/dialogs or app drawer in priority order
     BackHandler(
-        enabled = selectedAppContextApp != null ||
+        enabled = showHydrationReminder ||
+                selectedAppContextApp != null ||
                 showQuickAccessCustomizer ||
                 showJarvisDashboard ||
                 showQuickControls ||
@@ -121,6 +139,7 @@ fun LauncherRoot(
                 gestureState.isDrawerVisible
     ) {
         when {
+            showHydrationReminder -> showHydrationReminder = false
             selectedAppContextApp != null -> selectedAppContextApp = null
             showQuickAccessCustomizer -> showQuickAccessCustomizer = false
             showJarvisDashboard -> showJarvisDashboard = false
@@ -193,18 +212,41 @@ fun LauncherRoot(
             // Screen 4: Quick Controls Radial HUD & Toggles Modal
             if (showQuickControls) {
                 QuickControlsSheet(
-                    onDismiss = { showQuickControls = false }
+                    onDismiss = { showQuickControls = false },
+                    onTriggerHydrationTest = {
+                        showQuickControls = false
+                        showHydrationReminder = true
+                    }
                 )
             }
 
-            // Screen 5: Settings & Customization ("MAKE IT YOURS") Modal
+            // Screen 5: Settings & Customization Modal
             if (showCustomization) {
                 SettingsCustomizationDialog(
                     preferences = repository.preferences,
                     customization = customization,
-                    onDismiss = { showCustomization = false }
+                    onDismiss = { showCustomization = false },
+                    onTriggerHydrationTest = {
+                        showCustomization = false
+                        showHydrationReminder = true
+                    }
                 )
             }
+
+            // Marvel Character Hourly Hydration Companion
+            MarvelHydrationCompanion(
+                visible = showHydrationReminder,
+                glassesCount = customization.waterGlassesCount,
+                onAcceptWater = {
+                    repository.preferences.recordWaterAccepted()
+                },
+                onRefuseWater = {
+                    repository.preferences.recordWaterRefused()
+                },
+                onDismiss = {
+                    showHydrationReminder = false
+                }
+            )
 
             // App Context Menu (App Info, Quick Access, Dock, Uninstall)
             selectedAppContextApp?.let { app ->

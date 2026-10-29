@@ -57,10 +57,15 @@ fun HudPanel(
     modifier: Modifier = Modifier,
     title: String? = null,
     statusIndicator: String? = "ONLINE",
-    statusColor: Color = StarkCyan,
-    borderColor: Color = StarkHudBorder,
+    statusColor: Color = Color.Unspecified,
+    borderColor: Color = Color.Unspecified,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
+    val effectiveStatusColor = if (statusColor != Color.Unspecified) statusColor else marvelTheme.colors.primary
+    val effectiveBorderColor = if (borderColor != Color.Unspecified) borderColor else marvelTheme.colors.hudBorder
+    val effectiveBracketColor = marvelTheme.colors.hudBorderBright
+
     val shape = chamferedShape(cutSize = 24f)
 
     Box(
@@ -74,7 +79,7 @@ fun HudPanel(
                     )
                 )
             )
-            .border(1.dp, borderColor, shape)
+            .border(1.dp, effectiveBorderColor, shape)
     ) {
         // Technical Corner Reticle Brackets (Canvas overlay)
         Canvas(modifier = Modifier.matchParentSize()) {
@@ -82,20 +87,20 @@ fun HudPanel(
             val bracketStroke = 2.dp.toPx()
 
             // Top-Left bracket
-            drawLine(StarkHudBorderBright, Offset(0f, 0f), Offset(bracketLen, 0f), bracketStroke)
-            drawLine(StarkHudBorderBright, Offset(0f, 0f), Offset(0f, bracketLen), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(0f, 0f), Offset(bracketLen, 0f), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(0f, 0f), Offset(0f, bracketLen), bracketStroke)
 
             // Top-Right bracket
-            drawLine(StarkHudBorderBright, Offset(size.width - bracketLen, 0f), Offset(size.width, 0f), bracketStroke)
-            drawLine(StarkHudBorderBright, Offset(size.width, 0f), Offset(size.width, bracketLen), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(size.width - bracketLen, 0f), Offset(size.width, 0f), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(size.width, 0f), Offset(size.width, bracketLen), bracketStroke)
 
             // Bottom-Left bracket
-            drawLine(StarkHudBorderBright, Offset(0f, size.height - bracketLen), Offset(0f, size.height), bracketStroke)
-            drawLine(StarkHudBorderBright, Offset(0f, size.height), Offset(bracketLen, size.height), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(0f, size.height - bracketLen), Offset(0f, size.height), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(0f, size.height), Offset(bracketLen, size.height), bracketStroke)
 
             // Bottom-Right bracket
-            drawLine(StarkHudBorderBright, Offset(size.width - bracketLen, size.height), Offset(size.width, size.height), bracketStroke)
-            drawLine(StarkHudBorderBright, Offset(size.width, size.height - bracketLen), Offset(size.width, size.height), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(size.width - bracketLen, size.height), Offset(size.width, size.height), bracketStroke)
+            drawLine(effectiveBracketColor, Offset(size.width, size.height - bracketLen), Offset(size.width, size.height), bracketStroke)
         }
 
         Column(
@@ -110,7 +115,7 @@ fun HudPanel(
                 ) {
                     Text(
                         text = title.uppercase(),
-                        color = StarkCyan,
+                        color = effectiveStatusColor,
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
@@ -120,7 +125,7 @@ fun HudPanel(
                     if (statusIndicator != null) {
                         Text(
                             text = "● $statusIndicator",
-                            color = statusColor,
+                            color = effectiveStatusColor,
                             fontSize = 9.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.SemiBold,

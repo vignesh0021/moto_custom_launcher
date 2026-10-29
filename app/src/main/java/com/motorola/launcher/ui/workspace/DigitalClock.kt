@@ -71,32 +71,14 @@ fun DigitalClock(
     val amPmText = remember(currentTime) { if (!is24Hour) amPmFormat.format(date).uppercase(Locale.US) else "" }
     val dateText = remember(currentTime) { dateFormat.format(date).uppercase(Locale.US) }
 
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "STARK OS",
-            color = TextPrimary,
-            fontSize = 14.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 5.sp,
-            style = HudTextStyle
-        )
-        Text(
-            text = "JARVIS EDITION",
-            color = themeColor.primary,
-            fontSize = 9.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.5.sp,
-            style = HudTextStyle
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text = dateText,
@@ -123,7 +105,7 @@ fun DigitalClock(
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    color = themeColor.primary,
+                    color = marvelTheme.colors.primary,
                     modifier = Modifier.padding(bottom = 10.dp),
                     style = HudTextStyle
                 )
@@ -137,19 +119,19 @@ fun DigitalClock(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
                     .background(HudGlass)
-                    .border(1.dp, themeColor.primary.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                    .border(1.dp, marvelTheme.colors.hudBorder, RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 3.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(if (telemetry.isCharging) StarkEmerald else themeColor.primary)
+                        .background(if (telemetry.isCharging) StarkEmerald else marvelTheme.colors.primary)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "ONLINE · ${telemetry.refreshRateFormatted} · ${telemetry.networkType.uppercase(Locale.US)}",
-                    color = themeColor.primary,
+                    text = "${marvelTheme.hudConfig.statusBadge} · ${telemetry.refreshRateFormatted} · ${telemetry.networkType.uppercase(Locale.US)}",
+                    color = marvelTheme.colors.primary,
                     fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 1.sp

@@ -76,11 +76,13 @@ import kotlin.math.sin
 @Composable
 fun QuickControlsSheet(
     onDismiss: () -> Unit,
+    onTriggerHydrationTest: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val customization = LocalCustomization.current
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val themeColor = customization.themeColor
     val scrollState = rememberScrollState()
 
@@ -94,8 +96,8 @@ fun QuickControlsSheet(
             modifier = modifier
                 .fillMaxWidth()
                 .clip(sheetShape)
-                .background(StarkDarkSurface)
-                .border(1.5.dp, StarkHudBorderBright, sheetShape)
+                .background(marvelTheme.colors.surface)
+                .border(1.5.dp, marvelTheme.colors.hudBorderBright, sheetShape)
                 .padding(18.dp)
         ) {
             Column(
@@ -111,15 +113,8 @@ fun QuickControlsSheet(
                     fontSize = 15.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.5.sp
-                )
-                Text(
-                    text = "SYSTEM SETTINGS & TOOLS",
-                    color = themeColor.primary,
-                    fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 1.2.sp,
-                    modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
+                    letterSpacing = 2.5.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
                 // 1. Central Radial HUD Menu (Arc Reactor in center with 6 surrounding arc sectors)
@@ -320,6 +315,39 @@ fun QuickControlsSheet(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Marvel Hydration Companion Action Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(themeColor.primary.copy(alpha = 0.2f))
+                        .border(1.dp, themeColor.primary, RoundedCornerShape(8.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (customization.hapticFeedback) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                }
+                                onDismiss()
+                                onTriggerHydrationTest()
+                            }
+                        )
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "💧 CALL PIXEL FRIEND COMPANION",
+                        color = themeColor.bright,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Close Button
                 Box(

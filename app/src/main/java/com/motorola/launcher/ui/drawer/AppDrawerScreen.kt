@@ -55,6 +55,8 @@ import com.motorola.launcher.ui.theme.StarkDarkSurface
 import com.motorola.launcher.ui.theme.StarkHudBorder
 import com.motorola.launcher.ui.theme.TextPrimary
 import com.motorola.launcher.ui.theme.TextSecondary
+import androidx.compose.animation.core.FastOutSlowInEasing
+import com.motorola.launcher.ui.workspace.StarkWallpaperLayer
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
@@ -84,6 +86,7 @@ fun AppDrawerScreen(
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
     val customization = LocalCustomization.current
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val themeColor = customization.themeColor
     var selectedTab by remember { mutableStateOf("ALL") }
 
@@ -120,14 +123,31 @@ fun AppDrawerScreen(
         modifier = modifier
             .fillMaxSize()
             .graphicsLayer {
-                val p = progressProvider()
-                translationY = maxDragPx * (1.0f - p)
-                alpha = p.coerceIn(0.0f, 1.0f)
+                val rawP = progressProvider().coerceIn(0f, 1f)
+                // Marvel smooth cinematic easing (0% idle battery drain when resting)
+                val smoothP = FastOutSlowInEasing.transform(rawP)
+                translationY = maxDragPx * (1.0f - smoothP)
+                val scale = 0.94f + (0.06f * smoothP)
+                scaleX = scale
+                scaleY = scale
+                alpha = smoothP
             }
-            .background(StarkDarkSurface.copy(alpha = 0.96f))
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
+        // Marvel-Themed Wallpaper Layer for All Apps Screen
+        StarkWallpaperLayer(
+            preset = customization.wallpaper,
+            accent = marvelTheme.colors.primary,
+            modifier = Modifier.fillMaxSize()
+        )
+        // High-legibility frosted HUD glass scrim
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xB3030710))
+        )
+
         // Motorola Curved Waterfall Edge Ambient Glow
         Box(
             modifier = Modifier
@@ -136,7 +156,7 @@ fun AppDrawerScreen(
                 .width(3.dp)
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(themeColor.glow, Color.Transparent)
+                        colors = listOf(marvelTheme.colors.glow, Color.Transparent)
                     )
                 )
         )
@@ -147,7 +167,7 @@ fun AppDrawerScreen(
                 .width(3.dp)
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(Color.Transparent, themeColor.glow)
+                        colors = listOf(Color.Transparent, marvelTheme.colors.glow)
                     )
                 )
         )
@@ -180,30 +200,19 @@ fun AppDrawerScreen(
                         .width(42.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(themeColor.primary.copy(alpha = 0.5f))
+                        .background(marvelTheme.colors.primary.copy(alpha = 0.5f))
                 )
             }
 
-            // Screen Header: APPS
-            Text(
-                text = "APPS",
-                color = TextPrimary,
-                fontSize = 15.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 3.sp,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 8.dp)
-            )
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Category Tabs: ALL | FAVORITES | RECENT
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0x1F00E5FF))
-                    .border(1.dp, StarkHudBorder, RoundedCornerShape(20.dp))
+                    .background(marvelTheme.colors.subtle)
+                    .border(1.dp, marvelTheme.colors.hudBorder, RoundedCornerShape(20.dp))
                     .padding(3.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
@@ -213,7 +222,7 @@ fun AppDrawerScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) themeColor.primary else Color.Transparent)
+                            .background(if (isSelected) marvelTheme.drawerStyle.activeTabIndicator else Color.Transparent)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,

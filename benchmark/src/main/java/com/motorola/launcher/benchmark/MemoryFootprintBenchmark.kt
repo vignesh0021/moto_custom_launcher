@@ -6,7 +6,6 @@ import androidx.benchmark.macro.MemoryUsageMetric
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.filters.LargeTest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,7 +14,6 @@ import org.junit.runner.RunWith
  * Validates that resting PSS memory remains strictly below 45 MB by offloading
  * icon pixel buffers to immutable Bitmap.Config.HARDWARE textures.
  */
-@LargeTest
 @RunWith(AndroidJUnit4::class)
 class MemoryFootprintBenchmark {
 
@@ -27,7 +25,7 @@ class MemoryFootprintBenchmark {
     fun verifyRestingPssBelow45Mb() = benchmarkRule.measureRepeated(
         packageName = "com.motorola.launcher",
         metrics = listOf(MemoryUsageMetric(MemoryUsageMetric.Mode.Last)),
-        compilationMode = CompilationMode.Full,
+        compilationMode = CompilationMode.Full(),
         startupMode = StartupMode.WARM,
         iterations = 5,
         setupBlock = {

@@ -77,7 +77,7 @@ fun WorkspaceScreen(
 ) {
     val view = LocalView.current
     val customization = LocalCustomization.current
-    val themeColor = customization.themeColor
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
 
     val tap: (() -> Unit) -> () -> Unit = { action ->
         {
@@ -101,20 +101,20 @@ fun WorkspaceScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // Curved-edge ambient glow (left / right) — very subtle
+        // Curved-edge ambient glow (left / right) — dynamically themed
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .fillMaxHeight(0.5f)
                 .width(2.dp)
-                .background(Brush.horizontalGradient(listOf(themeColor.glow, Color.Transparent)))
+                .background(Brush.horizontalGradient(listOf(marvelTheme.colors.glow, Color.Transparent)))
         )
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight(0.5f)
                 .width(2.dp)
-                .background(Brush.horizontalGradient(listOf(Color.Transparent, themeColor.glow)))
+                .background(Brush.horizontalGradient(listOf(Color.Transparent, marvelTheme.colors.glow)))
         )
 
         Column(
@@ -144,26 +144,28 @@ fun WorkspaceScreen(
                     .padding(bottom = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                HudPill(text = "▲  ALL APPS", onClick = tap(onOpenDrawerClick))
+                HudPill(text = marvelTheme.dockStyle.pillText, onClick = tap(onOpenDrawerClick))
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                val dockShape = chamferedShape(cutSize = 20f)
+                val dockShape = chamferedShape(cutSize = marvelTheme.dockStyle.cutCornerSize)
+                val displayedDock = dockApps.take(6)
+                val dockIconSize = if (displayedDock.size > 4) 40.dp else 46.dp
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 12.dp)
                         .clip(dockShape)
-                        .background(HudGlass)
-                        .border(1.dp, themeColor.primary.copy(alpha = 0.45f), dockShape)
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .background(marvelTheme.dockStyle.glassColor)
+                        .border(1.dp, marvelTheme.colors.hudBorder, dockShape)
+                        .padding(horizontal = 6.dp, vertical = 8.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        for (item in dockApps.take(4)) {
+                        for (item in displayedDock) {
                             FuturisticAppIcon(
                                 app = item,
                                 onClick = tap { onAppClick(item) },
@@ -173,7 +175,7 @@ fun WorkspaceScreen(
                                     }
                                     onAppLongClick(item)
                                 },
-                                iconSize = 46.dp,
+                                iconSize = dockIconSize,
                                 showLabel = true
                             )
                         }
@@ -189,14 +191,14 @@ private fun HudPill(
     text: String,
     onClick: () -> Unit
 ) {
-    val themeColor = LocalCustomization.current.themeColor
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = Modifier
             .widthIn(min = 112.dp)
             .clip(shape)
             .background(HudGlass)
-            .border(1.dp, themeColor.primary.copy(alpha = 0.6f), shape)
+            .border(1.dp, marvelTheme.colors.hudBorderBright, shape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -207,7 +209,7 @@ private fun HudPill(
     ) {
         Text(
             text = text,
-            color = themeColor.primary,
+            color = marvelTheme.colors.bright,
             fontSize = 11.sp,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,

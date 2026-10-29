@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -203,8 +204,11 @@ fun ReactorCore(
                     CoreGeometry.VIBRANIUM_WEAVE -> drawVibraniumWeaveGeometry(center, radius, primaryColor, secondaryColor, burst)
                     CoreGeometry.STAR_SHIELD -> drawStarShieldGeometry(center, radius, primaryColor, secondaryColor, burst)
                     CoreGeometry.MJOLNIR_RUNIC -> drawMjolnirRunicGeometry(center, radius, primaryColor, secondaryColor, burst)
+                    CoreGeometry.GAMMA_FIST -> drawGammaFistGeometry(center, radius, primaryColor, secondaryColor, burst)
                     CoreGeometry.EYE_OF_AGAMOTTO -> drawEyeOfAgamottoGeometry(center, radius, primaryColor, secondaryColor, burst)
                     CoreGeometry.SPIDER_MATRIX -> drawSpiderMatrixGeometry(center, radius, primaryColor, secondaryColor, burst)
+                    CoreGeometry.BLACK_WIDOW_HOURGLASS -> drawBlackWidowHourglassGeometry(center, radius, primaryColor, secondaryColor, burst)
+                    CoreGeometry.AVENGERS_CHEVRON -> drawAvengersChevronGeometry(center, radius, primaryColor, secondaryColor, burst)
                 }
 
                 // 5. Central Radiant Core Backing
@@ -225,41 +229,53 @@ fun ReactorCore(
                 )
             }
 
-            // Central Telemetry & Hero Readout (Clean, high contrast, legible)
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Central Battery Percentage — Centered dead-center in the Marvel core geometry & arcs
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (telemetry.batteryLevel >= 0) "${telemetry.batteryLevel}%" else "--%",
-                    color = TextPrimary,
-                    fontSize = 24.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp,
-                    style = TextStyle(
-                        shadow = Shadow(color = Color.Black, offset = Offset(0f, 2f), blurRadius = 8f)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (telemetry.isCharging) {
+                            Text(
+                                text = "⚡",
+                                color = StarkEmerald,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(end = 2.dp)
+                            )
+                        }
+                        Text(
+                            text = if (telemetry.batteryLevel >= 0) "${telemetry.batteryLevel}%" else "--%",
+                            color = TextPrimary,
+                            fontSize = 26.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.5).sp,
+                            style = TextStyle(
+                                shadow = Shadow(color = Color.Black, offset = Offset(0f, 2f), blurRadius = 8f)
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (telemetry.isCharging) "CHARGING" else "BATTERY",
+                        color = if (telemetry.isCharging) StarkEmerald else coreColor.copy(alpha = 0.85f),
+                        fontSize = 7.5.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                        style = TextStyle(
+                            shadow = Shadow(color = Color.Black, offset = Offset(0f, 1f), blurRadius = 4f)
+                        )
                     )
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = if (telemetry.isCharging) "CHARGING" else hero.heroName.uppercase(),
-                    color = coreColor,
-                    fontSize = 8.5.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.4.sp,
-                    style = TextStyle(
-                        shadow = Shadow(color = Color.Black, offset = Offset(0f, 2f), blurRadius = 6f)
-                    )
-                )
-                Text(
-                    text = "RAM ${telemetry.ramPercent}%",
-                    color = TextSecondary.copy(alpha = 0.8f),
-                    fontSize = 7.5.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 1.0.sp
-                )
+                }
             }
         }
 
@@ -646,6 +662,54 @@ private fun DrawScope.drawSpiderMatrixGeometry(
     drawLine(color = primary, start = Offset(center.x, center.y + crossLen), end = Offset(center.x, center.y + crossLen - 12f), strokeWidth = 2.dp.toPx())
 }
 
+private fun DrawScope.drawGammaFistGeometry(
+    center: Offset,
+    radius: Float,
+    primary: Color,
+    secondary: Color,
+    burst: Float
+) {
+    val coreR = radius * 0.58f
+    // Tri-blade gamma radiation trefoil
+    for (i in 0 until 3) {
+        val angleDeg = i * 120f - 90f
+        val sweepAngle = 55f
+        drawArc(
+            color = primary.copy(alpha = 0.65f),
+            startAngle = angleDeg - sweepAngle / 2f,
+            sweepAngle = sweepAngle,
+            useCenter = false,
+            topLeft = Offset(center.x - coreR, center.y - coreR),
+            size = Size(coreR * 2, coreR * 2),
+            style = Stroke(width = 3.5.dp.toPx() + (burst * 4f))
+        )
+    }
+
+    // Concentric kinetic shockwave rings
+    drawCircle(
+        color = secondary.copy(alpha = 0.5f),
+        radius = radius * 0.44f,
+        center = center,
+        style = Stroke(width = 1.5.dp.toPx())
+    )
+    drawCircle(
+        color = primary.copy(alpha = 0.7f),
+        radius = radius * 0.30f,
+        center = center,
+        style = Stroke(width = 2.dp.toPx())
+    )
+
+    // 4 Heavy Gamma Compression Nodes (North, South, East, West)
+    val nodeDist = radius * 0.50f
+    listOf(0f, 90f, 180f, 270f).forEach { deg ->
+        val rad = (deg * PI / 180f).toFloat()
+        val nodeX = center.x + nodeDist * cos(rad)
+        val nodeY = center.y + nodeDist * sin(rad)
+        drawCircle(color = primary, radius = 3.5.dp.toPx(), center = Offset(nodeX, nodeY))
+        drawCircle(color = secondary, radius = 1.8.dp.toPx(), center = Offset(nodeX, nodeY))
+    }
+}
+
 private fun DrawScope.drawOuterTicks(center: Offset, radius: Float, accentColor: Color) {
     val totalTicks = 60
     for (i in 0 until totalTicks) {
@@ -674,3 +738,127 @@ private fun DrawScope.drawOuterTicks(center: Offset, radius: Float, accentColor:
         )
     }
 }
+
+/** Black Widow: Tactical dual crimson hourglass reticle & precision crosshairs */
+private fun DrawScope.drawBlackWidowHourglassGeometry(
+    center: Offset,
+    radius: Float,
+    primary: Color,
+    secondary: Color,
+    burst: Float
+) {
+    val hgRadius = radius * 0.58f
+
+    // Dual outer targeting brackets
+    drawArc(
+        color = primary.copy(alpha = 0.5f),
+        startAngle = 135f,
+        sweepAngle = 90f,
+        useCenter = false,
+        topLeft = Offset(center.x - hgRadius, center.y - hgRadius),
+        size = Size(hgRadius * 2, hgRadius * 2),
+        style = Stroke(width = 1.5.dp.toPx())
+    )
+    drawArc(
+        color = primary.copy(alpha = 0.5f),
+        startAngle = 315f,
+        sweepAngle = 90f,
+        useCenter = false,
+        topLeft = Offset(center.x - hgRadius, center.y - hgRadius),
+        size = Size(hgRadius * 2, hgRadius * 2),
+        style = Stroke(width = 1.5.dp.toPx())
+    )
+
+    // Hourglass shape (symmetric triangles meeting at center)
+    val hgHalfW = radius * 0.24f + (burst * 4f)
+    val hgHalfH = radius * 0.36f + (burst * 4f)
+    val waistGap = 2.dp.toPx()
+
+    // Top triangle (pointing down)
+    val topPath = Path().apply {
+        moveTo(center.x - hgHalfW, center.y - hgHalfH)
+        lineTo(center.x + hgHalfW, center.y - hgHalfH)
+        lineTo(center.x, center.y - waistGap)
+        close()
+    }
+    drawPath(topPath, color = primary, style = Stroke(width = 2.dp.toPx()))
+    drawPath(topPath, color = primary.copy(alpha = 0.25f))
+
+    // Bottom triangle (pointing up)
+    val bottomPath = Path().apply {
+        moveTo(center.x - hgHalfW, center.y + hgHalfH)
+        lineTo(center.x + hgHalfW, center.y + hgHalfH)
+        lineTo(center.x, center.y + waistGap)
+        close()
+    }
+    drawPath(bottomPath, color = primary, style = Stroke(width = 2.dp.toPx()))
+    drawPath(bottomPath, color = primary.copy(alpha = 0.25f))
+
+    // Tactical crosshairs
+    val tickLen = radius * 0.12f
+    drawLine(secondary, Offset(center.x - hgRadius - tickLen, center.y), Offset(center.x - hgRadius + 4f, center.y), 1.5.dp.toPx())
+    drawLine(secondary, Offset(center.x + hgRadius - 4f, center.y), Offset(center.x + hgRadius + tickLen, center.y), 1.5.dp.toPx())
+}
+
+/** Avengers Unified: Stylized Avengers chevron emblem with orbital hero rings */
+private fun DrawScope.drawAvengersChevronGeometry(
+    center: Offset,
+    radius: Float,
+    primary: Color,
+    secondary: Color,
+    burst: Float
+) {
+    val aRadius = radius * 0.62f
+
+    // Precision outer initiative circle with broken gap at arrow pass-through
+    drawArc(
+        color = primary,
+        startAngle = 20f,
+        sweepAngle = 310f,
+        useCenter = false,
+        topLeft = Offset(center.x - aRadius, center.y - aRadius),
+        size = Size(aRadius * 2, aRadius * 2),
+        style = Stroke(width = 2.5.dp.toPx() + (burst * 2f))
+    )
+
+    // Inner orbital accent ring
+    drawCircle(
+        color = secondary.copy(alpha = 0.5f),
+        radius = aRadius * 0.82f,
+        center = center,
+        style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f))
+    )
+
+    // Stylized slanted "A" chevron
+    val scale = (radius * 0.44f + (burst * 4f))
+    val aPath = Path().apply {
+        // Left slanted leg
+        moveTo(center.x - scale * 0.52f, center.y + scale * 0.85f)
+        lineTo(center.x + scale * 0.10f, center.y - scale * 0.95f)
+        lineTo(center.x + scale * 0.35f, center.y - scale * 0.95f)
+        lineTo(center.x - scale * 0.18f, center.y + scale * 0.85f)
+        close()
+    }
+    drawPath(aPath, color = primary)
+
+    // Right leg
+    val rPath = Path().apply {
+        moveTo(center.x + scale * 0.18f, center.y - scale * 0.60f)
+        lineTo(center.x + scale * 0.65f, center.y + scale * 0.85f)
+        lineTo(center.x + scale * 0.38f, center.y + scale * 0.85f)
+        lineTo(center.x + scale * 0.05f, center.y - scale * 0.20f)
+        close()
+    }
+    drawPath(rPath, color = primary)
+
+    // Horizontal arrow crossbar pointing right
+    val arrowPath = Path().apply {
+        moveTo(center.x - scale * 0.65f, center.y + scale * 0.12f)
+        lineTo(center.x + scale * 0.85f, center.y + scale * 0.12f)
+        lineTo(center.x + scale * 0.62f, center.y - scale * 0.08f)
+        moveTo(center.x + scale * 0.85f, center.y + scale * 0.12f)
+        lineTo(center.x + scale * 0.62f, center.y + scale * 0.32f)
+    }
+    drawPath(arrowPath, color = secondary, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+}
+

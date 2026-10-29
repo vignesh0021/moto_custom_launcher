@@ -1,9 +1,13 @@
 package com.motorola.launcher.ui.drawer
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.speech.RecognizerIntent
 import android.view.HapticFeedbackConstants
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,8 +62,22 @@ fun SearchBarOverlay(
     val context = LocalContext.current
     val view = LocalView.current
     val customization = LocalCustomization.current
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val themeColor = customization.themeColor
     val pillShape = RoundedCornerShape(24.dp)
+
+    // Voice Assistance Speech Recognizer Launcher
+    val voiceLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenList = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val spokenText = spokenList?.firstOrNull()?.trim() ?: ""
+            if (spokenText.isNotEmpty()) {
+                onQueryChange(spokenText)
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -69,7 +87,7 @@ fun SearchBarOverlay(
             .background(Color(0x1F060C18))
             .border(
                 width = 1.dp,
-                color = if (query.isNotEmpty()) themeColor.bright else StarkHudBorder,
+                color = if (query.isNotEmpty()) marvelTheme.colors.bright else marvelTheme.colors.hudBorder,
                 shape = pillShape
             )
             .padding(horizontal = 14.dp),
@@ -82,7 +100,7 @@ fun SearchBarOverlay(
             // Search Magnifying Glass Reticle
             Text(
                 text = "🔍",
-                color = themeColor.primary,
+                color = marvelTheme.colors.primary,
                 fontSize = 15.sp,
                 modifier = Modifier.padding(end = 8.dp)
             )
@@ -98,12 +116,12 @@ fun SearchBarOverlay(
                     fontWeight = FontWeight.Normal,
                     letterSpacing = 0.3.sp
                 ),
-                cursorBrush = SolidColor(themeColor.primary),
+                cursorBrush = SolidColor(marvelTheme.colors.primary),
                 singleLine = true,
                 decorationBox = { innerTextField ->
                     if (query.isEmpty()) {
                         Text(
-                            text = "Search apps, contacts, web...",
+                            text = marvelTheme.drawerStyle.searchPlaceholder,
                             color = TextDimHud,
                             fontSize = 13.sp,
                             fontFamily = FontFamily.SansSerif,
@@ -124,7 +142,7 @@ fun SearchBarOverlay(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(Color(0x3300F0FF))
+                        .background(marvelTheme.colors.glow)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -141,12 +159,14 @@ fun SearchBarOverlay(
                 }
             }
 
-            // Microphone Voice Search Trigger if search is empty
+            // Marvel Voice Assistant Microphone Trigger
             if (query.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
+                        .background(themeColor.primary.copy(alpha = 0.18f))
+                        .border(1.dp, themeColor.primary.copy(alpha = 0.5f), CircleShape)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -154,30 +174,34 @@ fun SearchBarOverlay(
                                 if (customization.hapticFeedback) {
                                     view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                                 }
-                                launchVoiceSearch(context)
+                                try {
+                                    val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search apps...")
+                                    }
+                                    voiceLauncher.launch(speechIntent)
+                                } catch (_: Exception) {
+                                    // Fallback to System Voice Assistant
+                                    try {
+                                        val assistIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(assistIntent)
+                                    } catch (_: Exception) {
+                                        Toast.makeText(context, "Voice assistance unavailable", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "🎙",
-                        color = themeColor.primary,
+                        color = themeColor.bright,
                         fontSize = 16.sp
                     )
                 }
             }
         }
-    }
-}
-
-private fun launchVoiceSearch(context: Context) {
-    try {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
-    } catch (_: Throwable) {
-        // Fallback gracefully if speech service is unavailable
     }
 }

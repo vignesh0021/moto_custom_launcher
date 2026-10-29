@@ -76,6 +76,7 @@ fun JarvisDashboardSheet(
     val context = LocalContext.current
     val view = LocalView.current
     val customization = LocalCustomization.current
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val themeColor = customization.themeColor
     val scrollState = rememberScrollState()
 
@@ -86,8 +87,8 @@ fun JarvisDashboardSheet(
             modifier = modifier
                 .fillMaxWidth()
                 .clip(sheetShape)
-                .background(StarkDarkSurface)
-                .border(1.5.dp, StarkHudBorderBright, sheetShape)
+                .background(marvelTheme.colors.surface)
+                .border(1.5.dp, marvelTheme.colors.hudBorderBright, sheetShape)
                 .padding(18.dp)
         ) {
             Column(
@@ -96,18 +97,18 @@ fun JarvisDashboardSheet(
                     .verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header: SYSTEM DASHBOARD / REAL-TIME DEVICE INFORMATION
+                // Header: Dynamic Marvel Theme System Dashboard Title & Subtitle
                 Text(
-                    text = "SYSTEM DASHBOARD",
+                    text = marvelTheme.dashboardStyle.title,
                     color = TextPrimary,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.5.sp
+                    letterSpacing = 2.sp
                 )
                 Text(
-                    text = "REAL-TIME DEVICE INFORMATION",
-                    color = themeColor.primary,
+                    text = marvelTheme.dashboardStyle.subtitle,
+                    color = marvelTheme.colors.primary,
                     fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 1.2.sp,
@@ -119,8 +120,8 @@ fun JarvisDashboardSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0x1F00E5FF))
-                        .border(1.dp, StarkHudBorder, RoundedCornerShape(12.dp))
+                        .background(marvelTheme.colors.subtle)
+                        .border(1.dp, marvelTheme.colors.hudBorder, RoundedCornerShape(12.dp))
                         .padding(12.dp)
                 ) {
                     Row(
@@ -182,8 +183,8 @@ fun JarvisDashboardSheet(
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = "STARK OS // JARVIS EDITION",
-                                color = themeColor.primary,
+                                text = "${marvelTheme.dashboardStyle.blueprintLabel} // TELEMETRY",
+                                color = marvelTheme.colors.primary,
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
                                 letterSpacing = 0.8.sp
@@ -478,8 +479,8 @@ fun JarvisDashboardSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(themeColor.subtle)
-                        .border(1.dp, themeColor.primary, RoundedCornerShape(8.dp))
+                        .background(marvelTheme.colors.subtle)
+                        .border(1.dp, marvelTheme.colors.primary, RoundedCornerShape(8.dp))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -495,7 +496,7 @@ fun JarvisDashboardSheet(
                 ) {
                     Text(
                         text = "CLOSE DASHBOARD",
-                        color = themeColor.primary,
+                        color = marvelTheme.colors.primary,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
@@ -513,16 +514,17 @@ private fun DashboardCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0x1F00E5FF))
-            .border(1.dp, StarkHudBorder, RoundedCornerShape(10.dp))
+            .background(marvelTheme.colors.subtle)
+            .border(1.dp, marvelTheme.colors.hudBorder, RoundedCornerShape(10.dp))
             .padding(10.dp)
     ) {
         Text(
             text = title,
-            color = StarkCyanBright,
+            color = marvelTheme.colors.bright,
             fontSize = 9.sp,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
