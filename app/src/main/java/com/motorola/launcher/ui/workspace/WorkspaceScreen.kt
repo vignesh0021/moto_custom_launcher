@@ -41,6 +41,7 @@ import com.motorola.launcher.system.SystemTelemetryState
 import com.motorola.launcher.ui.components.FuturisticAppIcon
 import com.motorola.launcher.ui.components.chamferedShape
 import com.motorola.launcher.ui.model.AppItem
+import com.motorola.launcher.ui.components.QuantumResonanceOverlay
 import com.motorola.launcher.ui.theme.LocalCustomization
 import com.motorola.launcher.ui.theme.StarkEmerald
 import com.motorola.launcher.ui.theme.TextPrimary
@@ -130,14 +131,20 @@ fun WorkspaceScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
-            // CENTRE: All-In-One Marvel Command Core (Battery + RAM + Controls + Settings integrated)
-            ReactorCore(
-                telemetry = telemetry,
-                onCoreClick = onOpenDiagnostics,
-                onOpenQuickControls = onOpenQuickControls,
-                onOpenCustomization = onOpenCustomization,
-                size = 230.dp
-            )
+            // CENTRE: All-In-One Marvel Command Core + Quantum Resonance
+            Box(contentAlignment = Alignment.Center) {
+                QuantumResonanceOverlay(
+                    isActive = telemetry.isCharging || telemetry.batteryLevel > 80,
+                    modifier = Modifier.size(320.dp)
+                )
+                ReactorCore(
+                    telemetry = telemetry,
+                    onCoreClick = onOpenDiagnostics,
+                    onOpenQuickControls = onOpenQuickControls,
+                    onOpenCustomization = onOpenCustomization,
+                    size = 230.dp
+                )
+            }
 
             // BOTTOM: Drawer trigger + dock
             Column(
