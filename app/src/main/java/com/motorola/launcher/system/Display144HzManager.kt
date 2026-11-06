@@ -2,6 +2,8 @@ package com.motorola.launcher.system
 
 import android.app.Activity
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Display
 import android.view.Window
@@ -9,7 +11,10 @@ import android.view.WindowManager
 
 /**
  * Plumbing for Motorola Edge 50 Fusion / Pro 144Hz curved pOLED display.
- * Locks the window and surface render cadence to 144Hz (6.944ms VSYNC interval).
+ *
+ * Battery-safe: 144Hz is applied ONLY while the user is actively gesturing
+ * (drawer swipe, pinch, rotation). After INTERACTION_TIMEOUT_MS of inactivity
+ * the display falls back to 60Hz to save power. No hardcoded always-on lock.
  */
 class Display144HzManager(private val activity: Activity) {
 
@@ -17,66 +22,90 @@ class Display144HzManager(private val activity: Activity) {
         private const val TAG = "Display144HzManager"
         const val TARGET_REFRESH_RATE = 144.0f
         const val FRAME_BUDGET_MS = 6.944f
+        private const val INTERACTION_TIMEOUT_MS = 2_000L
+        private const val IDLE_REFRESH_RATE = 60.0f
     }
 
-    /**
-     * Finds and applies the explicit 144Hz Display.Mode on Snapdragon 7s Gen 2 / 7 Gen 3.
-     */
-    fun enforce144HzMode() {
+    private val handler = Handler(Looper.getMainLooper())
+    private val idleFallback = object : Runnable {
+        override fun run() {
+            applyRefreshRate(IDLE_REFRESH_RATE)
+        }
+    }
+
+    private var highestSupportedHz = 60.0f
+    private var mode144Id: Int? = null
+
+    init {
+        cacheDisplayModes()
+    }
+
+    private fun cacheDisplayModes() {
         try {
-            val window = activity.window ?: return
-            val display: Display? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                try {
-                    activity.display
-                } catch (e: Throwable) {
-                    @Suppress("DEPRECATION")
-                    activity.windowManager?.defaultDisplay
+            val display = currentDisplay() ?: return
+            val supportedModes = display.supportedModes ?: emptyArray()
+            for (mode in supportedModes) {
+                val hz = mode.refreshRate
+                if (hz > highestSupportedHz) highestSupportedHz = hz
+                if (hz in 143.9f..144.2f) {
+                    mode144Id = mode.modeId
                 }
-            } else {
+            }
+        } catch (t: throwable) {
+            Log.w(TAG, "Failed caching display modes: ${t.message}")
+        }
+    }
+
+    private fun currentDisplay(): Display? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                activity.display
+            } catch (e: throwable) {
                 @Suppress("DEPRECATION")
                 activity.windowManager?.defaultDisplay
             }
+        } else {
+            @Suppress("DEPRECATION")
+            activity.windowManager?.defaultDisplay
+        }
+    }
 
-            if (display == null) {
-                Log.w(TAG, "Display not yet attached; skipping 144Hz mode lock.")
-                return
-            }
+    /**
+     * Call this when a gesture starts (drawer swipe, pinch, rotation).
+     * Immediately bumps to 144Hz and arms the idle fallback timer.
+     */
+    fun onInteractionStart() {
+        handler.removeCallbacks(idleFallback)
+        applyRefreshRate(TARGET_REFRESH_RATE)
+        handler.postDelayed(idleFallback, INTERACTION_TIMEOUT_MS)
+    }
 
-            val supportedModes = display.supportedModes ?: emptyArray()
-            var bestMode144: Display.Mode? = null
-            var maxHzFound = 60.0f
-            val currentMode = try { display.mode } catch (e: Throwable) { null }
+    /**
+     * Call on gesture end to start the countdown to 60Hz fallback.
+     */
+    fun onInteractionEnd() {
+        handler.removeCallbacks(idleFallback)
+        handler.postDelayed(idleFallback, INTERACTION_TIMEOUT_MS)
+    }
 
-            for (mode in supportedModes) {
-                val hz = mode.refreshRate
-                if (hz > maxHzFound) {
-                    maxHzFound = hz
-                }
-                // Match 144Hz panel (accounting for float precision: 143.9f..144.2f)
-                if (hz in 143.9f..144.2f) {
-                    if (bestMode144 == null || (currentMode != null &&
-                                mode.physicalWidth == currentMode.physicalWidth &&
-                                mode.physicalHeight == currentMode.physicalHeight)) {
-                        bestMode144 = mode
-                    }
-                }
-            }
-
+    private fun applyRefreshRate(rate: Float) {
+        try {
+            val window = activity.window ?: return
             val layoutParams = window.attributes
-
-            if (bestMode144 != null) {
-                Log.i(TAG, "Binding Window to 144Hz Display.Mode id=${bestMode144.modeId} (${bestMode144.physicalWidth}x${bestMode144.physicalHeight}@${bestMode144.refreshRate}Hz)")
-                layoutParams.preferredDisplayModeId = bestMode144.modeId
+            if (rate >= 143.9f && mode144Id != null) {
+                layoutParams.preferredDisplayModeId = mode144Id!!
                 layoutParams.preferredRefreshRate = TARGET_REFRESH_RATE
             } else {
-                Log.w(TAG, "Exact 144Hz Mode not found. Highest available: ${maxHzFound}Hz. Requesting ${maxHzFound}Hz preferredRefreshRate.")
-                layoutParams.preferredRefreshRate = maxHzFound.coerceAtLeast(60.0f)
+                layoutParams.preferredDisplayModeId = 0
+                layoutParams.preferredRefreshRate = rate.coerceAtMost(highestSupportedHz).coerceAtLeast(60.0f)
             }
-
             window.attributes = layoutParams
-            Log.i(TAG, "Window preferred display attributes successfully applied.")
-        } catch (t: Throwable) {
-            Log.w(TAG, "Failed configuring display refresh rate: ${t.message}")
+        } catch (t: throwable) {
+            Log.w(TAG, "Failed applying refresh rate ${rate}Hz: ${t.message}")
         }
+    }
+
+    fun release() {
+        handler.removeCallbacks(idleFallback)
     }
 }
