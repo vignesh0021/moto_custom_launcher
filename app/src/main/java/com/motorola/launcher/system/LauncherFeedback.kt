@@ -48,4 +48,14 @@ object LauncherFeedback {
             }
         }
     }
+
+    fun isReducedMotion(context: android.content.Context, customization: com.motorola.launcher.ui.model.CustomizationSettings): Boolean {
+        // Respect system reduced-motion setting or user preference
+        val scale = android.provider.Settings.Global.getFloat(
+            context.contentResolver,
+            android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE,
+            1f
+        )
+        return scale == 0f || !customization.hapticFeedback // simple heuristic; expand as needed
+    }
 }

@@ -9,6 +9,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.StatFs
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -76,9 +79,13 @@ data class SystemTelemetryState(
 
 class SystemTelemetryManager(private val context: Context) {
 
+    private val _telemetryState = MutableStateFlow(SystemTelemetryState())
+    val telemetryState: StateFlow<SystemTelemetryState> = _telemetryState.asStateFlow()
+
     @Volatile
-    var currentState: SystemTelemetryState = SystemTelemetryState()
-        private set
+    var currentState: SystemTelemetryState
+        get() = _telemetryState.value
+        private set(value) { _telemetryState.value = value }
 
     private val handler = Handler(Looper.getMainLooper())
     private val pollRunnable = object : Runnable {
