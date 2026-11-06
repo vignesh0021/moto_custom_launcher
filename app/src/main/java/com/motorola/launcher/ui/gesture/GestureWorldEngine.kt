@@ -23,7 +23,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import com.motorola.launcher.ui.model.MarvelHeroProtocol
-import com.motorola.launcher.ui.theme.ThemeColorPreset
+import com.motorola.launcher.ui.model.ThemeColorPreset
 import kotlin.math.abs
 
 /**
