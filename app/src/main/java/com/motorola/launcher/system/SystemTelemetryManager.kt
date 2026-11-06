@@ -82,7 +82,6 @@ class SystemTelemetryManager(private val context: Context) {
     private val _telemetryState = MutableStateFlow(SystemTelemetryState())
     val telemetryState: StateFlow<SystemTelemetryState> = _telemetryState.asStateFlow()
 
-    @Volatile
     var currentState: SystemTelemetryState
         get() = _telemetryState.value
         private set(value) { _telemetryState.value = value }

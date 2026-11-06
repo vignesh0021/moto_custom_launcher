@@ -27,7 +27,7 @@ data class ThemeColors(
     val textSecondary: Color = Color(0xB3FFFFFF),
     val textAccent: Color = primary,
     val tickColor: Color = primary.copy(alpha = 0.40f),
-    val glassTint: Color = primary.copy(alpha = 0.08f)
+    val glassTint: Color = primary.copy(alpha = 0.08f),
     val glassSurface: Color = Color(0x9903070E),
 )
 
