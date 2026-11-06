@@ -17,7 +17,7 @@ import com.motorola.launcher.system.WallpaperZoomController
 import com.motorola.launcher.ui.LauncherRoot
 import com.motorola.launcher.ui.theme.MotoLauncherTheme
 
-import kotlin.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 /**
  * Host Activity for the Motorola Edge 50 Custom Launcher.
@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         curvedEdgeGestureController?.detach()
-        telemetryManager?.release()
+        telemetryManager?.stopPeriodicCollection()
         repository?.onDestroy()
     }
 }

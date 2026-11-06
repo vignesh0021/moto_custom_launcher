@@ -210,3 +210,4 @@ class ContextualLauncherEngine(private val context: Context) {
     companion object {
         private const val POLL_INTERVAL_MS = 10_000L
     }
+}

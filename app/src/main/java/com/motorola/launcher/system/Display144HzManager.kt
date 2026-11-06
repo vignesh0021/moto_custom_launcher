@@ -51,7 +51,7 @@ class Display144HzManager(private val activity: Activity) {
                     mode144Id = mode.modeId
                 }
             }
-        } catch (t: throwable) {
+        } catch (t: Throwable) {
             Log.w(TAG, "Failed caching display modes: ${t.message}")
         }
     }
@@ -60,7 +60,7 @@ class Display144HzManager(private val activity: Activity) {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 activity.display
-            } catch (e: throwable) {
+            } catch (e: Throwable) {
                 @Suppress("DEPRECATION")
                 activity.windowManager?.defaultDisplay
             }
@@ -100,7 +100,7 @@ class Display144HzManager(private val activity: Activity) {
                 layoutParams.preferredRefreshRate = rate.coerceAtMost(highestSupportedHz).coerceAtLeast(60.0f)
             }
             window.attributes = layoutParams
-        } catch (t: throwable) {
+        } catch (t: Throwable) {
             Log.w(TAG, "Failed applying refresh rate ${rate}Hz: ${t.message}")
         }
     }

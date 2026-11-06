@@ -13,4 +13,3 @@ data class LauncherCustomization(
     val dockGlassOpacity: Float = 0.2f
 )
 
-val LocalCustomization = staticCompositionLocalOf { LauncherCustomization() }
