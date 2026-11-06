@@ -50,7 +50,7 @@ class SystemTelemetryManager(private val context: Context) {
         }
     }
 
-    fun start() {
+    fun startPeriodicCollection() {
         handler.post(pollRunnable)
     }
 
