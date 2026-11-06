@@ -24,8 +24,17 @@ data class SystemTelemetryState(
     val availableStorageGb: Double = 0.0,
     val isNetworkConnected: Boolean = false,
     val networkType: String = "NONE",
-    val uptimeHours: Long = 0L
-)
+    val uptimeHours: Long = 0L,
+    val batteryTempFormatted: String = "--",
+    val ramTotalFormatted: String = "--",
+    val ramPercent: Int = 0,
+    val isWifi: Boolean = false,
+    val isCellular: Boolean = false,
+    val refreshRateFormatted: String = "60Hz",
+    val uptimeFormatted: String = "--"
+) {
+    val ramUsedMb: Long get() = (totalRamMb - availableRamMb).coerceAtLeast(0L)
+}
 
 class SystemTelemetryManager(private val context: Context) {
 
@@ -50,16 +59,26 @@ class SystemTelemetryManager(private val context: Context) {
     }
 
     fun refresh() {
+        val totalRam = readTotalRamMb()
+        val availRam = readAvailableRamMb()
+        val ramPct = if (totalRam > 0L) (((totalRam - availRam) * 100) / totalRam).toInt() else 0
         currentState = SystemTelemetryState(
             batteryLevel = readBatteryLevel(),
             isCharging = readIsCharging(),
-            totalRamMb = readTotalRamMb(),
-            availableRamMb = readAvailableRamMb(),
+            totalRamMb = totalRam,
+            availableRamMb = availRam,
             totalStorageGb = readTotalStorageGb(),
             availableStorageGb = readAvailableStorageGb(),
             isNetworkConnected = readNetworkConnected(),
             networkType = readNetworkType(),
-            uptimeHours = android.os.SystemClock.uptimeMillis() / 3_600_000L
+            uptimeHours = android.os.SystemClock.uptimeMillis() / 3_600_000L,
+            batteryTempFormatted = readBatteryTempFormatted(),
+            ramTotalFormatted = "${totalRam}MB",
+            ramPercent = ramPct,
+            isWifi = readNetworkType() == "WIFI",
+            isCellular = readNetworkType() == "CELLULAR",
+            refreshRateFormatted = readRefreshRateFormatted(),
+            uptimeFormatted = formatUptime(android.os.SystemClock.uptimeMillis())
         )
     }
 
@@ -71,6 +90,14 @@ class SystemTelemetryManager(private val context: Context) {
     private fun readIsCharging(): Boolean {
         val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager ?: return false
         return bm.isCharging
+    }
+
+    private fun readBatteryTempFormatted(): String {
+        return try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager ?: return "--"
+            val temp = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_TEMPERATURE) / 10.0
+            String.format("%.1f°C", temp)
+        } catch (_: Exception) { "--" }
     }
 
     private fun readTotalRamMb(): Long {
@@ -118,6 +145,22 @@ class SystemTelemetryManager(private val context: Context) {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ETHERNET"
             else -> "OTHER"
         }
+    }
+
+    private fun readRefreshRateFormatted(): String {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val dm = context.resources.displayMetrics
+                val refresh = context.display?.refreshRate ?: 60f
+                "${refresh.toInt()}Hz"
+            } else "60Hz"
+        } catch (_: Exception) { "60Hz" }
+    }
+
+    private fun formatUptime(ms: Long): String {
+        val hours = ms / 3_600_000L
+        val minutes = (ms % 3_600_000L) / 60_000L
+        return "${hours}h ${minutes}m"
     }
 
     companion object {
