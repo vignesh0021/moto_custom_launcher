@@ -1,23 +1,22 @@
 package com.motorola.launcher.system
 
-import android.content.Context
-import android.provider.Settings
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.HapticFeedbackConstants
-import android.view.SoundEffectConstants
 import android.view.View
-import com.motorola.launcher.ui.model.AnimationLevelPreset
-import com.motorola.launcher.ui.model.CustomizationSettings
 
 /**
- * Centralized tactile haptics, auditory feedback, and accessibility reduced-motion manager
- * for the Multi-Marvel Launcher.
+ * Centralized haptic + sound feedback for launcher interactions.
+ * Respects user customization toggles; zero-cost no-op when both disabled.
  */
 object LauncherFeedback {
 
-    /**
-     * Executes tactile haptic feedback and optional auditory sound click effects.
-     * Respects user settings and sound/haptic toggles (sound disabled by default).
-     */
+    private var toneGenerator: ToneGenerator? = null
+
     fun performFeedback(
         view: View,
         hapticEnabled: Boolean,
@@ -25,35 +24,28 @@ object LauncherFeedback {
         isLongPress: Boolean = false
     ) {
         if (hapticEnabled) {
-            val hapticConstant = if (isLongPress) {
-                HapticFeedbackConstants.LONG_PRESS
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                view.performHapticFeedback(
+                    if (isLongPress) HapticFeedbackConstants.LONG_PRESS
+                    else HapticFeedbackConstants.CONFIRM
+                )
             } else {
-                HapticFeedbackConstants.KEYBOARD_TAP
+                @Suppress("DEPRECATION")
+                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             }
-            view.performHapticFeedback(hapticConstant)
         }
-
         if (soundEnabled) {
-            view.playSoundEffect(SoundEffectConstants.CLICK)
-        }
-    }
-
-    /**
-     * Returns true if either the user selected the "Low Motion" performance preset
-     * or the Android OS accessibility "Remove animations" setting is active.
-     */
-    fun isReducedMotion(context: Context, customization: CustomizationSettings): Boolean {
-        if (customization.animationLevel == AnimationLevelPreset.PERFORMANCE) {
-            return true
-        }
-
-        return try {
-            val resolver = context.contentResolver
-            val animatorScale = Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1.0f)
-            val transitionScale = Settings.Global.getFloat(resolver, Settings.Global.TRANSITION_ANIMATION_SCALE, 1.0f)
-            animatorScale == 0f || transitionScale == 0f
-        } catch (_: Exception) {
-            false
+            try {
+                if (toneGenerator == null) {
+                    toneGenerator = ToneGenerator(AudioManager.STREAM_SYSTEM, 60)
+                }
+                toneGenerator?.startTone(
+                    if (isLongPress) ToneGenerator.TONE_PROP_BEEP else ToneGenerator.TONE_PROP_ACK,
+                    80
+                )
+            } catch (_: Exception) {
+                // tone gen unavailable on some devices
+            }
         }
     }
 }
