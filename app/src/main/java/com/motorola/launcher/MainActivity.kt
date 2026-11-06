@@ -17,7 +17,7 @@ import com.motorola.launcher.system.WallpaperZoomController
 import com.motorola.launcher.ui.LauncherRoot
 import com.motorola.launcher.ui.theme.MotoLauncherTheme
 
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlin.coroutines.flow.MutableSharedFlow
 
 /**
  * Host Activity for the Motorola Edge 50 Custom Launcher.
@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
                 statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
                 navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
             )
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             Log.w(TAG, "enableEdgeToEdge failed: ${e.message}")
         }
 
@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
             // 1. Hardware Wallpaper Window Plumbing
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
             WindowCompat.setDecorFitsSystemWindows(window, false)
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             Log.w(TAG, "Failed setting window wallpaper flags: ${e.message}")
         }
 
@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
         // 3. Curved Edge Palm Exclusion Controller
         try {
             curvedEdgeGestureController = CurvedEdgeGestureController(window.decorView)
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             Log.w(TAG, "Curved edge exclusion initialization failed: ${e.message}")
         }
 
@@ -112,12 +112,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        telemetryManager?.stopPeriodicCollection()
     }
 
     override fun onStop() {
         super.onStop()
-        telemetryManager?.stopPeriodicCollection()
     }
 
     /**
