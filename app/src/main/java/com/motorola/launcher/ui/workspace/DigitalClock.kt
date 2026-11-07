@@ -252,7 +252,7 @@ fun DigitalClock(
                             fontWeight = FontWeight.Light,
                             letterSpacing = 0.sp
                         ),
-                        modifier = Modifier.padding(horizontal = 3.dp, bottom = 4.dp)
+                        modifier = Modifier.padding(start = 3.dp, end = 3.dp, bottom = 4.dp)
                     )
 
                     // Minutes
