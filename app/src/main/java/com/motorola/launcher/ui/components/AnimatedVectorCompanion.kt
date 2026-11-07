@@ -400,7 +400,7 @@ private fun DrawScope.drawMithraVector(
 
     // 7. Expressive Eyebrows
     val browY = headY - 14f
-    val browTilt = if (isSpeaking) -2f else 0f
+    val browTilt = if (viseme != VisemeShape.REST) -2f else 0f
     drawLine(
         color = hairColor,
         start = Offset(cx - 24f, browY + browTilt),
