@@ -64,4 +64,20 @@ class CharacterCompanionTest {
         assertTrue(hasTamil1)
         assertTrue(!hasTamil2)
     }
+
+    @Test
+    fun sanitizeForSpeech_stripsEmojisAndGlyphsAccurately() {
+        val inputWithEmojis = "💧 அப்பா தண்ணி குடிங்க! 🎉 Stay hydrated! 💪 ✓"
+        val sanitized = com.motorola.launcher.system.CompanionVoiceManager.sanitizeForSpeech(inputWithEmojis)
+
+        // Verifies all emojis and UI symbols are removed so TTS never speaks "water droplet" or "party popper"
+        assertTrue("Expected no water droplet emoji", !sanitized.contains("💧"))
+        assertTrue("Expected no party popper emoji", !sanitized.contains("🎉"))
+        assertTrue("Expected no muscle emoji", !sanitized.contains("💪"))
+        assertTrue("Expected no checkmark glyph", !sanitized.contains("✓"))
+
+        // Verifies words and meaning are fully preserved
+        assertTrue(sanitized.contains("அப்பா தண்ணி குடிங்க!"))
+        assertTrue(sanitized.contains("Stay hydrated!"))
+    }
 }

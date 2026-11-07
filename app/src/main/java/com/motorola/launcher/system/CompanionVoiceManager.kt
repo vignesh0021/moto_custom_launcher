@@ -69,19 +69,19 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
             CompanionStyle.MITHRA -> {
                 val text = customization.mithraDialoguePrompt.ifBlank { "அப்பா தண்ணி குடிங்க" }
                 val phonetic = "Appa, thanni kudinga!"
-                speakWithLocaleCheck(text, phonetic)
+                speakWithLocaleCheck(text, phonetic, customization)
             }
             CompanionStyle.MITHRA_MOM -> {
                 val text = customization.momDialoguePrompt.ifBlank { "ஏங்க தண்ணி குடிங்க" }
                 val phonetic = "Yenga, thanni kudinga!"
-                speakWithLocaleCheck(text, phonetic)
+                speakWithLocaleCheck(text, phonetic, customization)
             }
             CompanionStyle.CUSTOM_SHEET -> {
                 val text = customization.customDialoguePrompt.ifBlank { "Hydration check! Drink some water!" }
-                speakWithLocaleCheck(text, text)
+                speakWithLocaleCheck(text, text, customization)
             }
             CompanionStyle.HERO_SUIT -> {
-                speakHeroPromptInternal(hero)
+                speakHeroPromptInternal(hero, customization)
             }
             else -> {
                 val lines = listOf(
@@ -92,6 +92,7 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
                 val key = "other_prompt"
                 val nextIdx = ((promptIndexMap[key] ?: 0) + 1) % lines.size
                 promptIndexMap[key] = nextIdx
+                applyAcoustics(customization)
                 speak(lines[nextIdx])
             }
         }
@@ -111,19 +112,19 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
             CompanionStyle.MITHRA -> {
                 val text = customization.mithraDialogueAccepted.ifBlank { "அப்பா சூப்பர்! நல்லா தண்ணி குடிச்சிட்டீங்க!" }
                 val phonetic = "Appa super! Nalla thanni kudichitteenga!"
-                speakWithLocaleCheck(text, phonetic)
+                speakWithLocaleCheck(text, phonetic, customization)
             }
             CompanionStyle.MITHRA_MOM -> {
                 val text = customization.momDialogueAccepted.ifBlank { "ரொம்ப நல்லதுங்க, உடம்பை நல்லா பார்த்துக்கோங்க!" }
                 val phonetic = "Romba nalladhunga, udamba paarthukkoanga!"
-                speakWithLocaleCheck(text, phonetic)
+                speakWithLocaleCheck(text, phonetic, customization)
             }
             CompanionStyle.CUSTOM_SHEET -> {
                 val text = customization.customDialogueAccepted.ifBlank { "Awesome! Stay hydrated and energized!" }
-                speakWithLocaleCheck(text, text)
+                speakWithLocaleCheck(text, text, customization)
             }
             CompanionStyle.HERO_SUIT -> {
-                speakHeroAcceptedInternal(hero)
+                speakHeroAcceptedInternal(hero, customization)
             }
             else -> {
                 val lines = listOf(
@@ -134,6 +135,7 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
                 val key = "other_accepted"
                 val nextIdx = ((acceptedIndexMap[key] ?: 0) + 1) % lines.size
                 acceptedIndexMap[key] = nextIdx
+                applyAcoustics(customization)
                 speak(lines[nextIdx])
             }
         }
@@ -153,19 +155,19 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
             CompanionStyle.MITHRA -> {
                 val text = customization.mithraDialogueRefused.ifBlank { "அப்பா அப்புறம் மறக்காம தண்ணி குடிங்க!" }
                 val phonetic = "Appa, appuram marakkama thanni kudinga!"
-                speakWithLocaleCheck(text, phonetic)
+                speakWithLocaleCheck(text, phonetic, customization)
             }
             CompanionStyle.MITHRA_MOM -> {
                 val text = customization.momDialogueRefused.ifBlank { "வேலை முக்கியம் தான், ஆனா தண்ணி குடிக்க மறந்துடாதீங்க!" }
                 val phonetic = "Velai mukkiyam thaan, aana thanni kudikka marandhidaadheenga!"
-                speakWithLocaleCheck(text, phonetic)
+                speakWithLocaleCheck(text, phonetic, customization)
             }
             CompanionStyle.CUSTOM_SHEET -> {
                 val text = customization.customDialogueRefused.ifBlank { "Take care of yourself, remember to drink later!" }
-                speakWithLocaleCheck(text, text)
+                speakWithLocaleCheck(text, text, customization)
             }
             CompanionStyle.HERO_SUIT -> {
-                speakHeroRefusedInternal(hero)
+                speakHeroRefusedInternal(hero, customization)
             }
             else -> {
                 val lines = listOf(
@@ -175,6 +177,7 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
                 val key = "other_refused"
                 val nextIdx = ((refusedIndexMap[key] ?: 0) + 1) % lines.size
                 refusedIndexMap[key] = nextIdx
+                applyAcoustics(customization)
                 speak(lines[nextIdx])
             }
         }
@@ -193,7 +196,7 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         speakRefused(CustomizationSettings(heroProtocol = hero, companionStyle = style))
     }
 
-    private fun speakHeroPromptInternal(hero: MarvelHeroProtocol) {
+    private fun speakHeroPromptInternal(hero: MarvelHeroProtocol, customization: CustomizationSettings) {
         val lines = when (hero) {
             MarvelHeroProtocol.HULK -> listOf(
                 "Hulk reminder! Drink water now! Big muscles need water to smash!",
@@ -253,10 +256,11 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         val key = hero.id
         val nextIndex = ((promptIndexMap[key] ?: 0) + 1) % lines.size
         promptIndexMap[key] = nextIndex
+        applyAcoustics(customization)
         speak(lines[nextIndex])
     }
 
-    private fun speakHeroAcceptedInternal(hero: MarvelHeroProtocol) {
+    private fun speakHeroAcceptedInternal(hero: MarvelHeroProtocol, customization: CustomizationSettings) {
         val lines = when (hero) {
             MarvelHeroProtocol.HULK -> listOf(
                 "Hulk smash dehydration! Good job friend, Hulk happy! Muscles stay strong!",
@@ -307,10 +311,11 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         val key = hero.id
         val nextIndex = ((acceptedIndexMap[key] ?: 0) + 1) % lines.size
         acceptedIndexMap[key] = nextIndex
+        applyAcoustics(customization)
         speak(lines[nextIndex])
     }
 
-    private fun speakHeroRefusedInternal(hero: MarvelHeroProtocol) {
+    private fun speakHeroRefusedInternal(hero: MarvelHeroProtocol, customization: CustomizationSettings) {
         val lines = when (hero) {
             MarvelHeroProtocol.HULK -> listOf(
                 "Hulk wait for you. Drink soon!",
@@ -333,6 +338,7 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         val key = hero.id
         val nextIndex = ((refusedIndexMap[key] ?: 0) + 1) % lines.size
         refusedIndexMap[key] = nextIndex
+        applyAcoustics(customization)
         speak(lines[nextIndex])
     }
 
@@ -345,22 +351,25 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         try {
             val availableVoices = engine.voices
             if (!availableVoices.isNullOrEmpty()) {
+                val femaleVoices = availableVoices.filter { voice ->
+                    val n = voice.name.lowercase()
+                    (n.contains("female") || voice.features.any { it.contains("female") })
+                }
+
                 val targetVoice: Voice? = when (style) {
-                    CompanionStyle.MITHRA, CompanionStyle.MITHRA_MOM -> {
-                        // Prefer female voice
-                        availableVoices.firstOrNull { voice ->
-                            val n = voice.name.lowercase()
-                            (n.contains("female") || voice.features.any { it.contains("female") })
-                        }
+                    CompanionStyle.MITHRA -> {
+                        // For Mithra (young daughter), pick the first female voice or child-like timbre
+                        femaleVoices.firstOrNull() ?: availableVoices.firstOrNull()
+                    }
+                    CompanionStyle.MITHRA_MOM -> {
+                        // For Mom (mother/wife), pick second female voice if available to differentiate
+                        if (femaleVoices.size > 1) femaleVoices[1] else femaleVoices.firstOrNull()
                     }
                     CompanionStyle.HERO_SUIT -> {
                         when (hero) {
                             MarvelHeroProtocol.BLACK_WIDOW -> {
-                                availableVoices.firstOrNull { voice ->
-                                    val n = voice.name.lowercase()
-                                    (n.contains("female") || voice.features.any { it.contains("female") }) &&
-                                    voice.locale.language == Locale.ENGLISH.language
-                                } ?: availableVoices.firstOrNull { it.locale.language == Locale.ENGLISH.language }
+                                femaleVoices.firstOrNull { it.locale.language == Locale.ENGLISH.language }
+                                    ?: femaleVoices.firstOrNull()
                             }
                             MarvelHeroProtocol.IRON_MAN, MarvelHeroProtocol.DOCTOR_STRANGE -> {
                                 availableVoices.firstOrNull { voice ->
@@ -386,10 +395,24 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
             // Safe fallback
         }
 
-        // 2. Character-specific acoustic pitch and speech cadence tuning
+        applyAcoustics(customization)
+    }
+
+    /**
+     * Sets distinct character acoustic parameters (pitch and speech rate).
+     * Called both during voice configuration and immediately after any language switch,
+     * preventing Android TTS from resetting to default timbre.
+     */
+    private fun applyAcoustics(customization: CustomizationSettings) {
+        val engine = tts ?: return
+        val style = customization.companionStyle
+        val hero = customization.heroProtocol
+
         val (pitch, rate) = when (style) {
-            CompanionStyle.MITHRA -> Pair(1.55f, 1.08f)        // Sweet child voice
-            CompanionStyle.MITHRA_MOM -> Pair(1.18f, 0.98f)    // Caring mother/wife voice
+            // Mithra: Playful, sweet toddler/daughter voice (high pitch, quick cadence)
+            CompanionStyle.MITHRA -> Pair(1.72f, 1.08f)
+            // Mithra's Mom: Warm, caring adult mother/wife voice (calm, natural maternal pitch)
+            CompanionStyle.MITHRA_MOM -> Pair(1.06f, 0.94f)
             CompanionStyle.CUSTOM_SHEET -> Pair(1.05f, 1.02f)
             CompanionStyle.HERO_SUIT -> when (hero) {
                 MarvelHeroProtocol.HULK -> Pair(0.48f, 0.72f)          // Deep booming titan
@@ -408,7 +431,7 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         engine.setSpeechRate(rate)
     }
 
-    private fun speakWithLocaleCheck(text: String, phoneticFallback: String) {
+    private fun speakWithLocaleCheck(text: String, phoneticFallback: String, customization: CustomizationSettings) {
         val engine = tts ?: return
         val isTamil = text.any { it in '\u0B80'..'\u0BFF' }
 
@@ -423,6 +446,8 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
             if (taAvailable >= TextToSpeech.LANG_AVAILABLE) {
                 try {
                     engine.language = taLocale
+                    // Critical: reapply acoustics AFTER setting language, because setLanguage resets pitch & rate
+                    applyAcoustics(customization)
                     speak(text)
                     return
                 } catch (_: Throwable) {}
@@ -430,11 +455,13 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
             // Fallback to English phonetic pronunciation so the speaker still sounds clear
             try {
                 engine.language = Locale.US
+                applyAcoustics(customization)
             } catch (_: Throwable) {}
             speak(phoneticFallback)
         } else {
             try {
                 engine.language = Locale.US
+                applyAcoustics(customization)
             } catch (_: Throwable) {}
             speak(text)
         }
@@ -447,8 +474,26 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         } catch (_: Throwable) {}
     }
 
+    companion object {
+        /**
+         * Sanitizes dialogue text before sending to TextToSpeech engine.
+         * Completely strips emojis, symbols, and UI glyphs so the TTS engine never
+         * speaks emoji names (e.g. "water droplet", "flexed biceps", "checkmark").
+         */
+        fun sanitizeForSpeech(text: String): String {
+            // Strip unicode emoji symbols, dingbats, surrogate pairs, and pictographs
+            val emojiRegex = Regex("[\\p{So}\\p{Sk}\\p{Cn}\\uD83C-\\uDBFF\\uDC00-\\uDFFF\\u2600-\\u27BF\\uFE00-\\uFE0F]+")
+            val withoutEmojis = text.replace(emojiRegex, " ")
+            // Strip non-spoken UI symbols like ✓, ✕, ⚡, ✦, ⚙, etc.
+            val withoutSymbols = withoutEmojis.replace(Regex("[✓✕⚡✦⚙▶◀▲▼•·|/\\[\\]{}()#*~`_=+\\-<>]"), " ")
+            return withoutSymbols.replace(Regex("\\s+"), " ").trim()
+        }
+    }
+
     private fun speak(text: String) {
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "COMPANION_VOICE_${System.currentTimeMillis()}")
+        val sanitized = sanitizeForSpeech(text)
+        if (sanitized.isBlank()) return
+        tts?.speak(sanitized, TextToSpeech.QUEUE_FLUSH, null, "COMPANION_VOICE_${System.currentTimeMillis()}")
     }
 
     fun stop() {

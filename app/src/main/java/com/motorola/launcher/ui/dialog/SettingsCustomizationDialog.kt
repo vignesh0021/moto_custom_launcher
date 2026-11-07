@@ -33,6 +33,8 @@ import androidx.compose.ui.text.TextStyle
 import com.motorola.launcher.data.companion.CharacterExpression
 import com.motorola.launcher.data.companion.CharacterPose
 import com.motorola.launcher.data.companion.CharacterSheetEngine
+import com.motorola.launcher.R
+import com.motorola.launcher.ui.components.VideoCompanionPlayer
 import com.motorola.launcher.ui.model.CompanionStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -748,7 +750,25 @@ fun SettingsCustomizationDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        if (previewBmp != null) {
+                                        val isVideoCompanion = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA ||
+                                                selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
+
+                                        if (isVideoCompanion) {
+                                            val rawId = if (selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA) {
+                                                R.raw.video_mithra
+                                            } else {
+                                                R.raw.video_mithra_mom
+                                            }
+                                            VideoCompanionPlayer(
+                                                rawResId = rawId,
+                                                cornerRadius = 8.dp,
+                                                borderColor = themeColor.primary,
+                                                isMuted = true,
+                                                modifier = Modifier
+                                                    .size(width = 46.dp, height = 70.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                        } else if (previewBmp != null) {
                                             Image(
                                                 bitmap = previewBmp.asImageBitmap(),
                                                 contentDescription = "Companion Preview",
