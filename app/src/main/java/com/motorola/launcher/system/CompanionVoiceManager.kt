@@ -5,14 +5,34 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
+import android.speech.tts.UtteranceProgressListener
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.motorola.launcher.ui.model.CompanionStyle
 import com.motorola.launcher.ui.model.CustomizationSettings
 import com.motorola.launcher.ui.model.MarvelHeroProtocol
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
+
+/**
+ * Visual mouth shapes for real-time lip-synchronization with TextToSpeech audio.
+ */
+enum class VisemeShape {
+    REST,      // Neutral closed smile
+    OPEN_A,    // Open mouth for 'a', 'ah', 'aa'
+    ROUND_O,   // Rounded mouth for 'o', 'oo', 'u'
+    WIDE_E,    // Wide smile mouth for 'e', 'ee', 'i'
+    CLOSED_M   // Closed pressed lips for 'm', 'p', 'b'
+}
 
 /**
  * Manages notification voice announcements for Marvel Superheroes and Character Companions.
@@ -39,6 +59,13 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
     private val acceptedIndexMap = mutableMapOf<String, Int>()
     private val refusedIndexMap = mutableMapOf<String, Int>()
 
+    var isSpeaking by mutableStateOf(false)
+        private set
+    var currentViseme by mutableStateOf(VisemeShape.REST)
+        private set
+
+    private var visemeJob: Job? = null
+
     init {
         tts = TextToSpeech(context.applicationContext, this)
     }
@@ -50,7 +77,47 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
                 if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
                     isInitialized = true
                 }
+                engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        isSpeaking = true
+                        startVisemeCadence()
+                    }
+
+                    override fun onDone(utteranceId: String?) {
+                        isSpeaking = false
+                        visemeJob?.cancel()
+                        currentViseme = VisemeShape.REST
+                    }
+
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String?) {
+                        isSpeaking = false
+                        visemeJob?.cancel()
+                        currentViseme = VisemeShape.REST
+                    }
+                })
             }
+        }
+    }
+
+    private fun startVisemeCadence() {
+        visemeJob?.cancel()
+        visemeJob = CoroutineScope(Dispatchers.Main).launch {
+            val visemes = listOf(
+                VisemeShape.OPEN_A,
+                VisemeShape.WIDE_E,
+                VisemeShape.ROUND_O,
+                VisemeShape.OPEN_A,
+                VisemeShape.CLOSED_M,
+                VisemeShape.WIDE_E
+            )
+            var index = 0
+            while (isSpeaking) {
+                currentViseme = visemes[index % visemes.size]
+                index++
+                delay(140)
+            }
+            currentViseme = VisemeShape.REST
         }
     }
 
@@ -497,10 +564,16 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
     }
 
     fun stop() {
+        visemeJob?.cancel()
+        isSpeaking = false
+        currentViseme = VisemeShape.REST
         tts?.stop()
     }
 
     fun destroy() {
+        visemeJob?.cancel()
+        isSpeaking = false
+        currentViseme = VisemeShape.REST
         tts?.stop()
         tts?.shutdown()
         tts = null

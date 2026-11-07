@@ -226,7 +226,9 @@ fun WorkspaceScreen(
         } else {
             // Portrait Layout (Standard)
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -250,52 +252,52 @@ fun WorkspaceScreen(
                         size = 230.dp
                     )
                 }
-            }
 
-            // BOTTOM: Drawer trigger + dock
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                HudPill(text = marvelTheme.dockStyle.pillText, onClick = tap(onOpenDrawerClick))
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                val dockShape = chamferedShape(cutSize = marvelTheme.dockStyle.cutCornerSize)
-                val displayedDock = dockApps.take(6)
-                val dockIconSize = if (displayedDock.size > 4) 40.dp else 46.dp
-                Box(
+                // BOTTOM: Drawer trigger + dock
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .clip(dockShape)
-                        .background(marvelTheme.dockStyle.glassColor)
-                        .border(1.dp, marvelTheme.colors.hudBorder, dockShape)
-                        .padding(horizontal = 6.dp, vertical = 8.dp)
+                        .padding(bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
+                    HudPill(text = marvelTheme.dockStyle.pillText, onClick = tap(onOpenDrawerClick))
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val dockShape = chamferedShape(cutSize = marvelTheme.dockStyle.cutCornerSize)
+                    val displayedDock = dockApps.take(6)
+                    val dockIconSize = if (displayedDock.size > 4) 40.dp else 46.dp
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .clip(dockShape)
+                            .background(marvelTheme.dockStyle.glassColor)
+                            .border(1.dp, marvelTheme.colors.hudBorder, dockShape)
+                            .padding(horizontal = 6.dp, vertical = 8.dp)
                     ) {
-                        for (item in displayedDock) {
-                            FuturisticAppIcon(
-                                app = item,
-                                onClick = tap { onAppClick(item) },
-                                onLongClick = {
-                                    com.motorola.launcher.system.LauncherFeedback.performFeedback(
-                                        view = view,
-                                        hapticEnabled = customization.hapticFeedback,
-                                        soundEnabled = customization.soundEffectsEnabled,
-                                        isLongPress = true
-                                    )
-                                    onAppLongClick(item)
-                                },
-                                iconSize = dockIconSize,
-                                showLabel = true
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            for (item in displayedDock) {
+                                FuturisticAppIcon(
+                                    app = item,
+                                    onClick = tap { onAppClick(item) },
+                                    onLongClick = {
+                                        com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                                            view = view,
+                                            hapticEnabled = customization.hapticFeedback,
+                                            soundEnabled = customization.soundEffectsEnabled,
+                                            isLongPress = true
+                                        )
+                                        onAppLongClick(item)
+                                    },
+                                    iconSize = dockIconSize,
+                                    showLabel = true
+                                )
+                            }
                         }
                     }
                 }

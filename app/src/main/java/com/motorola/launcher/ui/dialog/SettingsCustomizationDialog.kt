@@ -34,6 +34,8 @@ import com.motorola.launcher.data.companion.CharacterExpression
 import com.motorola.launcher.data.companion.CharacterPose
 import com.motorola.launcher.data.companion.CharacterSheetEngine
 import com.motorola.launcher.R
+import com.motorola.launcher.system.VisemeShape
+import com.motorola.launcher.ui.components.AnimatedVectorCompanion
 import com.motorola.launcher.ui.components.VideoCompanionPlayer
 import com.motorola.launcher.ui.model.CompanionStyle
 import androidx.compose.runtime.Composable
@@ -750,22 +752,23 @@ fun SettingsCustomizationDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val isVideoCompanion = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA ||
+                                        val isVectorCompanion = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA ||
                                                 selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
 
-                                        if (isVideoCompanion) {
-                                            val rawId = if (selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA) {
-                                                R.raw.video_mithra
-                                            } else {
-                                                R.raw.video_mithra_mom
-                                            }
-                                            VideoCompanionPlayer(
-                                                rawResId = rawId,
-                                                cornerRadius = 8.dp,
-                                                borderColor = themeColor.primary,
-                                                isMuted = true,
+                                        if (isVectorCompanion) {
+                                            AnimatedVectorCompanion(
+                                                style = selectedStyle,
+                                                viseme = VisemeShape.REST,
+                                                isSpeaking = false,
+                                                walkPhase = 0f,
+                                                isWalking = false,
+                                                isCelebrating = false,
+                                                isDisappointed = false,
                                                 modifier = Modifier
                                                     .size(width = 46.dp, height = 70.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(Color(0x33000000))
+                                                    .border(1.dp, themeColor.primary.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                                             )
                                             Spacer(modifier = Modifier.width(10.dp))
                                         } else if (previewBmp != null) {

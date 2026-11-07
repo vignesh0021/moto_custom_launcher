@@ -80,4 +80,15 @@ class CharacterCompanionTest {
         assertTrue(sanitized.contains("அப்பா தண்ணி குடிங்க!"))
         assertTrue(sanitized.contains("Stay hydrated!"))
     }
+
+    @Test
+    fun visemeShape_enumCompleteAndRestIsDefault() {
+        val visemes = com.motorola.launcher.system.VisemeShape.entries
+        assertEquals(5, visemes.size)
+        assertTrue(visemes.contains(com.motorola.launcher.system.VisemeShape.REST))
+        assertTrue(visemes.contains(com.motorola.launcher.system.VisemeShape.OPEN_A))
+        assertTrue(visemes.contains(com.motorola.launcher.system.VisemeShape.ROUND_O))
+        assertTrue(visemes.contains(com.motorola.launcher.system.VisemeShape.WIDE_E))
+        assertTrue(visemes.contains(com.motorola.launcher.system.VisemeShape.CLOSED_M))
+    }
 }
