@@ -386,6 +386,7 @@ fun MarvelHydrationCompanion(
                     }
 
                     // Render Character (Real Hardware-Accelerated Video for Mithra & Mom, 3D model for Heroes, Sprites for Custom Sheet)
+                    val currentSprites = companionSprites
                     if (isVideoCompanion) {
                         val rawId = if (isMithra) R.raw.video_mithra else R.raw.video_mithra_mom
                         val videoBorder = if (isMithra) Color(0xFF00E5FF) else Color(0xFFFFD54F)
@@ -396,23 +397,23 @@ fun MarvelHydrationCompanion(
                             isMuted = !customization.companionVoiceEnabled,
                             modifier = Modifier.fillMaxSize()
                         )
-                    } else if (isCustomSheetCompanion && companionSprites != null) {
+                    } else if (isCustomSheetCompanion && currentSprites != null) {
                         // Multi-Frame Walk Cycle & Dynamic Facial Expression Engine
                         val activeBitmap: Bitmap? = if (isWalking) {
-                            sheetEngine.getWalkFrame(companionSprites, walkPhase.value)
+                            sheetEngine.getWalkFrame(currentSprites, walkPhase.value)
                         } else {
                             when (state) {
                                 HydrationState.PROMPT -> {
-                                    companionSprites.poses[CharacterPose.FRONT]
-                                        ?: companionSprites.expressions[CharacterExpression.CURIOUS]
+                                    currentSprites.poses[CharacterPose.FRONT]
+                                        ?: currentSprites.expressions[CharacterExpression.CURIOUS]
                                 }
                                 HydrationState.ACCEPTED -> {
-                                    companionSprites.expressions[CharacterExpression.HAPPY]
-                                        ?: companionSprites.poses[CharacterPose.FRONT]
+                                    currentSprites.expressions[CharacterExpression.HAPPY]
+                                        ?: currentSprites.poses[CharacterPose.FRONT]
                                 }
                                 HydrationState.REFUSED -> {
-                                    companionSprites.expressions[CharacterExpression.UPSET]
-                                        ?: companionSprites.poses[CharacterPose.FRONT]
+                                    currentSprites.expressions[CharacterExpression.UPSET]
+                                        ?: currentSprites.poses[CharacterPose.FRONT]
                                 }
                             }
                         }
