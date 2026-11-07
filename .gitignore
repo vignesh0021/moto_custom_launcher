@@ -21,6 +21,7 @@ benchmark/build/
 # Gradle files
 .gradle/
 buildOutput/
+outputs/
 
 # Local configuration file (sdk path, etc)
 local.properties
