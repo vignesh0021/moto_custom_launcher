@@ -74,14 +74,14 @@ class CharacterSheetEngine private constructor(private val context: Context) {
         val cacheKey = if (style == CompanionStyle.CUSTOM_SHEET) "custom_$customUri" else style.id
         spriteCache.get(cacheKey)?.let { return it }
 
-        val sheetBitmap: Bitmap? = when (style) {
+        val sheetBitmap = (when (style) {
             CompanionStyle.MITHRA -> loadDrawableBitmap(R.drawable.sheet_mithra)
             CompanionStyle.MITHRA_MOM -> loadDrawableBitmap(R.drawable.sheet_mithra_mom)
             CompanionStyle.CUSTOM_SHEET -> {
                 if (customUri.isNotBlank()) loadUriBitmap(customUri) else null
             }
             else -> null
-        } ?: return null
+        }) ?: return null
 
         val sprites = sliceSheet(style, sheetBitmap)
         if (sprites != null) {
