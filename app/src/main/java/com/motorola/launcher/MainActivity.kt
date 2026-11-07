@@ -100,6 +100,15 @@ class MainActivity : ComponentActivity() {
         wallpaperZoomController?.onWindowDetached()
     }
 
+    private val closeSystemDialogsReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+            if (Intent.ACTION_CLOSE_SYSTEM_DIALOGS == intent?.action) {
+                wallpaperZoomController?.updateDrawerProgress(0.0f)
+                homePressEvents.tryEmit(Unit)
+            }
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         telemetryManager?.startPeriodicCollection()
@@ -108,11 +117,24 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         telemetryManager?.startPeriodicCollection()
+        try {
+            val filter = android.content.IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(closeSystemDialogsReceiver, filter, android.content.Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(closeSystemDialogsReceiver, filter)
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Registering closeSystemDialogsReceiver failed: ${e.message}")
+        }
     }
 
     override fun onPause() {
         super.onPause()
         telemetryManager?.stopPeriodicCollection()
+        try {
+            unregisterReceiver(closeSystemDialogsReceiver)
+        } catch (_: Throwable) {}
     }
 
     override fun onStop() {
@@ -120,12 +142,17 @@ class MainActivity : ComponentActivity() {
         telemetryManager?.stopPeriodicCollection()
     }
 
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        homePressEvents.tryEmit(Unit)
+    }
+
     /**
-     * Intercepts Home button presses (intent action MAIN) to reset state.
+     * Intercepts Home button presses (intent action MAIN) to reset state and return to main home screen.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (Intent.ACTION_MAIN == intent.action && intent.hasCategory(Intent.CATEGORY_HOME)) {
+        if (Intent.ACTION_MAIN == intent.action) {
             wallpaperZoomController?.updateDrawerProgress(0.0f)
             homePressEvents.tryEmit(Unit)
         }

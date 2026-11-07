@@ -56,7 +56,18 @@ class LauncherPreferences(context: Context) {
             hydrationIntervalMinutes = prefs.getInt(KEY_HYDRATION_INTERVAL, 60),
             companionVoiceEnabled = prefs.getBoolean(KEY_COMPANION_VOICE, true),
             waterGlassesCount = prefs.getInt(KEY_WATER_GLASSES, 0),
-            lastHydrationHour = prefs.getLong(KEY_LAST_HYDRATION_HOUR, 0L)
+            lastHydrationHour = prefs.getLong(KEY_LAST_HYDRATION_HOUR, 0L),
+            companionLanguage = prefs.getString(KEY_COMPANION_LANG, "ta") ?: "ta",
+            mithraDialoguePrompt = prefs.getString(KEY_MITHRA_PROMPT, "அப்பா தண்ணி குடிங்க 💧") ?: "அப்பா தண்ணி குடிங்க 💧",
+            mithraDialogueAccepted = prefs.getString(KEY_MITHRA_ACCEPTED, "அப்பா சூப்பர்! நல்லா தண்ணி குடிச்சிட்டீங்க! 🎉") ?: "அப்பா சூப்பர்! நல்லா தண்ணி குடிச்சிட்டீங்க! 🎉",
+            mithraDialogueRefused = prefs.getString(KEY_MITHRA_REFUSED, "அப்பா அப்புறம் மறக்காம தண்ணி குடிங்க! 🥺") ?: "அப்பா அப்புறம் மறக்காம தண்ணி குடிங்க! 🥺",
+            momDialoguePrompt = prefs.getString(KEY_MOM_PROMPT, "ஏங்க தண்ணி குடிங்க 💧") ?: "ஏங்க தண்ணி குடிங்க 💧",
+            momDialogueAccepted = prefs.getString(KEY_MOM_ACCEPTED, "ரொம்ப நல்லதுங்க, உடம்பை நல்லா பார்த்துக்கோங்க! 💛") ?: "ரொம்ப நல்லதுங்க, உடம்பை நல்லா பார்த்துக்கோங்க! 💛",
+            momDialogueRefused = prefs.getString(KEY_MOM_REFUSED, "வேலை முக்கியம் தான், ஆனா தண்ணி குடிக்க மறந்துடாதீங்க! 😤") ?: "வேலை முக்கியம் தான், ஆனா தண்ணி குடிக்க மறந்துடாதீங்க! 😤",
+            customSheetUri = prefs.getString(KEY_CUSTOM_SHEET_URI, "") ?: "",
+            customDialoguePrompt = prefs.getString(KEY_CUSTOM_PROMPT, "Hydration check! Drink a glass of water 💧") ?: "Hydration check! Drink a glass of water 💧",
+            customDialogueAccepted = prefs.getString(KEY_CUSTOM_ACCEPTED, "Awesome! Stay hydrated and energized! 🌟") ?: "Awesome! Stay hydrated and energized! 🌟",
+            customDialogueRefused = prefs.getString(KEY_CUSTOM_REFUSED, "Take care of yourself, remember to drink later! 🫡") ?: "Take care of yourself, remember to drink later! 🫡"
         )
     }
 
@@ -224,6 +235,52 @@ class LauncherPreferences(context: Context) {
         _customization.value = _customization.value.copy(soundEffectsEnabled = enabled)
     }
 
+    fun updateCompanionLanguage(language: String) {
+        prefs.edit().putString(KEY_COMPANION_LANG, language).apply()
+        _customization.value = _customization.value.copy(companionLanguage = language)
+    }
+
+    fun updateMithraDialogues(prompt: String, accepted: String, refused: String) {
+        prefs.edit()
+            .putString(KEY_MITHRA_PROMPT, prompt)
+            .putString(KEY_MITHRA_ACCEPTED, accepted)
+            .putString(KEY_MITHRA_REFUSED, refused)
+            .apply()
+        _customization.value = _customization.value.copy(
+            mithraDialoguePrompt = prompt,
+            mithraDialogueAccepted = accepted,
+            mithraDialogueRefused = refused
+        )
+    }
+
+    fun updateMomDialogues(prompt: String, accepted: String, refused: String) {
+        prefs.edit()
+            .putString(KEY_MOM_PROMPT, prompt)
+            .putString(KEY_MOM_ACCEPTED, accepted)
+            .putString(KEY_MOM_REFUSED, refused)
+            .apply()
+        _customization.value = _customization.value.copy(
+            momDialoguePrompt = prompt,
+            momDialogueAccepted = accepted,
+            momDialogueRefused = refused
+        )
+    }
+
+    fun updateCustomSheet(uri: String, prompt: String, accepted: String, refused: String) {
+        prefs.edit()
+            .putString(KEY_CUSTOM_SHEET_URI, uri)
+            .putString(KEY_CUSTOM_PROMPT, prompt)
+            .putString(KEY_CUSTOM_ACCEPTED, accepted)
+            .putString(KEY_CUSTOM_REFUSED, refused)
+            .apply()
+        _customization.value = _customization.value.copy(
+            customSheetUri = uri,
+            customDialoguePrompt = prompt,
+            customDialogueAccepted = accepted,
+            customDialogueRefused = refused
+        )
+    }
+
     companion object {
         private const val KEY_THEME_ID = "theme_id"
         private const val KEY_SOUND_EFFECTS = "sound_effects_enabled"
@@ -244,5 +301,16 @@ class LauncherPreferences(context: Context) {
         private const val KEY_COMPANION_VOICE = "companion_voice_enabled"
         private const val KEY_WATER_GLASSES = "water_glasses"
         private const val KEY_LAST_HYDRATION_HOUR = "last_hydration_hour"
+        private const val KEY_COMPANION_LANG = "companion_lang"
+        private const val KEY_MITHRA_PROMPT = "mithra_prompt"
+        private const val KEY_MITHRA_ACCEPTED = "mithra_accepted"
+        private const val KEY_MITHRA_REFUSED = "mithra_refused"
+        private const val KEY_MOM_PROMPT = "mom_prompt"
+        private const val KEY_MOM_ACCEPTED = "mom_accepted"
+        private const val KEY_MOM_REFUSED = "mom_refused"
+        private const val KEY_CUSTOM_SHEET_URI = "custom_sheet_uri"
+        private const val KEY_CUSTOM_PROMPT = "custom_prompt"
+        private const val KEY_CUSTOM_ACCEPTED = "custom_accepted"
+        private const val KEY_CUSTOM_REFUSED = "custom_refused"
     }
 }

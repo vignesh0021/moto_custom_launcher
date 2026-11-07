@@ -152,7 +152,16 @@ def verify_codebase():
     if not os.path.exists(test_file):
         errors.append("MarvelThemeEngineTest.kt does not exist!")
 
-    # 8. Check Licensing Doc
+    companion_test_file = os.path.join(base_dir, "app/src/test/java/com/motorola/launcher/companion/CharacterCompanionTest.kt")
+    if not os.path.exists(companion_test_file):
+        errors.append("CharacterCompanionTest.kt does not exist!")
+
+    # 8. Check Companion Engine
+    engine_file = os.path.join(base_dir, "app/src/main/java/com/motorola/launcher/data/companion/CharacterSheetEngine.kt")
+    if not os.path.exists(engine_file):
+        errors.append("CharacterSheetEngine.kt does not exist!")
+
+    # 9. Check Licensing Doc
     lic_file = os.path.join(base_dir, "docs/THEME_LICENSING.md")
     if not os.path.exists(lic_file):
         errors.append("docs/THEME_LICENSING.md does not exist!")

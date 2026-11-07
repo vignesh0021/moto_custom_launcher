@@ -3,6 +3,7 @@ package com.motorola.launcher.ui.dialog
 import android.content.Intent
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,10 +21,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
+import com.motorola.launcher.data.companion.CharacterExpression
+import com.motorola.launcher.data.companion.CharacterPose
+import com.motorola.launcher.data.companion.CharacterSheetEngine
+import com.motorola.launcher.ui.model.CompanionStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -658,7 +668,7 @@ fun SettingsCustomizationDialog(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "COMPANION OUTFIT",
+                            text = "WATER COMPANION CHARACTER",
                             color = TextDimHud,
                             fontSize = 8.5.sp,
                             fontFamily = FontFamily.Monospace,
@@ -666,38 +676,268 @@ fun SettingsCustomizationDialog(
                             letterSpacing = 1.sp,
                             modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
                         )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            com.motorola.launcher.ui.model.CompanionStyle.entries.forEach { style ->
-                                val isSelected = customization.companionStyle == style
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(if (isSelected) themeColor.subtle else Color(0x10FFFFFF))
-                                        .border(
-                                            1.dp,
-                                            if (isSelected) themeColor.primary else Color(0x28FFFFFF),
-                                            RoundedCornerShape(6.dp)
-                                        )
-                                        .clickable {
-                                            if (customization.hapticFeedback) {
-                                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        // Companion Character Selection (2 rows of 3)
+                        val allCompanionStyles = com.motorola.launcher.ui.model.CompanionStyle.entries
+                        for (rowStyles in allCompanionStyles.chunked(3)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                for (style in rowStyles) {
+                                    val isSelected = customization.companionStyle == style
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isSelected) themeColor.subtle else Color(0x10FFFFFF))
+                                            .border(
+                                                1.dp,
+                                                if (isSelected) themeColor.primary else Color(0x28FFFFFF),
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                            .clickable {
+                                                if (customization.hapticFeedback) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                                }
+                                                preferences.updateCompanionStyle(style)
                                             }
-                                            preferences.updateCompanionStyle(style)
+                                            .padding(vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = style.displayName.split(" ").first(),
+                                            color = if (isSelected) themeColor.bright else TextSecondary,
+                                            fontSize = 9.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Live Companion Sprite Preview & Dialogue Customizer
+                        val selectedStyle = customization.companionStyle
+                        val isCustomSheet = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA ||
+                                selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM ||
+                                selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.CUSTOM_SHEET
+
+                        if (isCustomSheet) {
+                            val sheetEngine = remember(context) { com.motorola.launcher.data.companion.CharacterSheetEngine.getInstance(context) }
+                            val sprites = remember(selectedStyle, customization.customSheetUri) {
+                                sheetEngine.getSprites(selectedStyle, customization.customSheetUri)
+                            }
+                            val previewBmp = sprites?.poses?.get(com.motorola.launcher.data.companion.CharacterPose.PORTRAIT)
+                                ?: sprites?.poses?.get(com.motorola.launcher.data.companion.CharacterPose.FRONT)
+                                ?: sprites?.expressions?.get(com.motorola.launcher.data.companion.CharacterExpression.HAPPY)
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0x22050A14))
+                                    .border(1.dp, themeColor.primary.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                    .padding(10.dp)
+                            ) {
+                                Column {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (previewBmp != null) {
+                                            Image(
+                                                bitmap = previewBmp.asImageBitmap(),
+                                                contentDescription = "Companion Preview",
+                                                contentScale = ContentScale.Fit,
+                                                modifier = Modifier
+                                                    .size(46.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(Color(0x33000000))
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
                                         }
-                                        .padding(vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = style.displayName,
-                                        color = if (isSelected) themeColor.bright else TextSecondary,
-                                        fontSize = 9.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "${selectedStyle.displayName} DIALOGUES",
+                                                color = themeColor.bright,
+                                                fontSize = 9.5.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = "Editable in Tamil & English. Speaks with character voice.",
+                                                color = TextSecondary,
+                                                fontSize = 8.sp,
+                                                fontFamily = FontFamily.SansSerif
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    when (selectedStyle) {
+                                        com.motorola.launcher.ui.model.CompanionStyle.MITHRA -> {
+                                            HudDialogueInput(
+                                                label = "PROMPT DIALOGUE (அழைப்பு)",
+                                                value = customization.mithraDialoguePrompt,
+                                                onValueChange = { preferences.updateMithraDialogues(it, customization.mithraDialogueAccepted, customization.mithraDialogueRefused) },
+                                                accentColor = themeColor.bright
+                                            )
+                                            HudDialogueInput(
+                                                label = "ACCEPT DIALOGUE (குடித்தவுடன்)",
+                                                value = customization.mithraDialogueAccepted,
+                                                onValueChange = { preferences.updateMithraDialogues(customization.mithraDialoguePrompt, it, customization.mithraDialogueRefused) },
+                                                accentColor = com.motorola.launcher.ui.theme.StarkEmerald
+                                            )
+                                            HudDialogueInput(
+                                                label = "LATER DIALOGUE (அப்புறம்)",
+                                                value = customization.mithraDialogueRefused,
+                                                onValueChange = { preferences.updateMithraDialogues(customization.mithraDialoguePrompt, customization.mithraDialogueAccepted, it) },
+                                                accentColor = Color(0xFFFFB300)
+                                            )
+
+                                            // Quick Preset Buttons
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(top = 4.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(themeColor.subtle)
+                                                        .border(1.dp, themeColor.primary, RoundedCornerShape(6.dp))
+                                                        .clickable {
+                                                            preferences.updateMithraDialogues(
+                                                                "அப்பா தண்ணி குடிங்க 💧",
+                                                                "அப்பா சூப்பர்! நல்லா தண்ணி குடிச்சிட்டீங்க! 🎉",
+                                                                "அப்பா அப்புறம் மறக்காம தண்ணி குடிங்க! 🥺"
+                                                            )
+                                                        }
+                                                        .padding(vertical = 5.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(text = "TAMIL DEFAULT", color = themeColor.bright, fontSize = 8.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                                }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(Color(0x18FFFFFF))
+                                                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(6.dp))
+                                                        .clickable {
+                                                            preferences.updateMithraDialogues(
+                                                                "Daddy, drink water please! 💧",
+                                                                "Yay Daddy! You finished your water! 🎉",
+                                                                "Okay Daddy, remember to drink later! 🥺"
+                                                            )
+                                                        }
+                                                        .padding(vertical = 5.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(text = "ENGLISH DEFAULT", color = TextSecondary, fontSize = 8.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                        com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM -> {
+                                            HudDialogueInput(
+                                                label = "PROMPT DIALOGUE (அழைப்பு)",
+                                                value = customization.momDialoguePrompt,
+                                                onValueChange = { preferences.updateMomDialogues(it, customization.momDialogueAccepted, customization.momDialogueRefused) },
+                                                accentColor = themeColor.bright
+                                            )
+                                            HudDialogueInput(
+                                                label = "ACCEPT DIALOGUE (குடித்தவுடன்)",
+                                                value = customization.momDialogueAccepted,
+                                                onValueChange = { preferences.updateMomDialogues(customization.momDialoguePrompt, it, customization.momDialogueRefused) },
+                                                accentColor = com.motorola.launcher.ui.theme.StarkEmerald
+                                            )
+                                            HudDialogueInput(
+                                                label = "LATER DIALOGUE (அப்புறம்)",
+                                                value = customization.momDialogueRefused,
+                                                onValueChange = { preferences.updateMomDialogues(customization.momDialoguePrompt, customization.momDialogueAccepted, it) },
+                                                accentColor = Color(0xFFFFB300)
+                                            )
+
+                                            // Quick Preset Buttons
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(top = 4.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(themeColor.subtle)
+                                                        .border(1.dp, themeColor.primary, RoundedCornerShape(6.dp))
+                                                        .clickable {
+                                                            preferences.updateMomDialogues(
+                                                                "ஏங்க தண்ணி குடிங்க 💧",
+                                                                "ரொம்ப நல்லதுங்க, உடம்பை நல்லா பார்த்துக்கோங்க! 💛",
+                                                                "வேலை முக்கியம் தான், ஆனா தண்ணி குடிக்க மறந்துடாதீங்க! 😤"
+                                                            )
+                                                        }
+                                                        .padding(vertical = 5.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(text = "TAMIL DEFAULT", color = themeColor.bright, fontSize = 8.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                                }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(Color(0x18FFFFFF))
+                                                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(6.dp))
+                                                        .clickable {
+                                                            preferences.updateMomDialogues(
+                                                                "Dear, please drink some water! 💧",
+                                                                "Very good, please take care of your health! 💛",
+                                                                "Work is important, but don't forget to hydrate! 😤"
+                                                            )
+                                                        }
+                                                        .padding(vertical = 5.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(text = "ENGLISH DEFAULT", color = TextSecondary, fontSize = 8.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                        com.motorola.launcher.ui.model.CompanionStyle.CUSTOM_SHEET -> {
+                                            HudDialogueInput(
+                                                label = "IMAGE FILE PATH / URI",
+                                                value = customization.customSheetUri,
+                                                onValueChange = { preferences.updateCustomSheet(it, customization.customDialoguePrompt, customization.customDialogueAccepted, customization.customDialogueRefused) },
+                                                accentColor = themeColor.bright
+                                            )
+                                            HudDialogueInput(
+                                                label = "PROMPT DIALOGUE",
+                                                value = customization.customDialoguePrompt,
+                                                onValueChange = { preferences.updateCustomSheet(customization.customSheetUri, it, customization.customDialogueAccepted, customization.customDialogueRefused) },
+                                                accentColor = themeColor.bright
+                                            )
+                                            HudDialogueInput(
+                                                label = "ACCEPT DIALOGUE",
+                                                value = customization.customDialogueAccepted,
+                                                onValueChange = { preferences.updateCustomSheet(customization.customSheetUri, customization.customDialoguePrompt, it, customization.customDialogueRefused) },
+                                                accentColor = com.motorola.launcher.ui.theme.StarkEmerald
+                                            )
+                                            HudDialogueInput(
+                                                label = "REFUSED DIALOGUE",
+                                                value = customization.customDialogueRefused,
+                                                onValueChange = { preferences.updateCustomSheet(customization.customSheetUri, customization.customDialoguePrompt, customization.customDialogueAccepted, it) },
+                                                accentColor = Color(0xFFFFB300)
+                                            )
+                                        }
+                                        else -> {}
+                                    }
                                 }
                             }
                         }
@@ -995,4 +1235,52 @@ fun MiniThemeInsignia(
         }
     }
 }
+
+/**
+ * Sci-Fi HUD themed text field for editing companion dialogues.
+ */
+@Composable
+private fun HudDialogueInput(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    accentColor: Color
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp)
+    ) {
+        Text(
+            text = label,
+            color = accentColor,
+            fontSize = 8.5.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.8.sp
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0x22050A14))
+                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(6.dp))
+                .padding(horizontal = 9.dp, vertical = 7.dp)
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = TextStyle(
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.SansSerif
+                ),
+                cursorBrush = SolidColor(accentColor),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
 

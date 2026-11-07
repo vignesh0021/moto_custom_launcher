@@ -273,6 +273,9 @@ enum class AnimationLevelPreset(val id: String, val displayName: String, val spe
  */
 enum class CompanionStyle(val id: String, val displayName: String) {
     HERO_SUIT("hero_suit", "Marvel Hero"),
+    MITHRA("mithra", "Mithra (மலர் பாப்பா)"),
+    MITHRA_MOM("mithra_mom", "Mithra's Mom (மனைவி)"),
+    CUSTOM_SHEET("custom_sheet", "Custom Upload Sheet"),
     TAILORED_JACKET("tailored", "Brown Jacket"),
     SOUTH_INDIAN("south_indian", "South Indian");
 
@@ -304,6 +307,18 @@ data class CustomizationSettings(
     val hydrationIntervalMinutes: Int = 60,
     val companionVoiceEnabled: Boolean = true,
     val waterGlassesCount: Int = 0,
-    val lastHydrationHour: Long = 0L
+    val lastHydrationHour: Long = 0L,
+    // Tamil & English editable companion dialogues
+    val companionLanguage: String = "ta", // "ta" (Tamil), "en" (English), "dual"
+    val mithraDialoguePrompt: String = "அப்பா தண்ணி குடிங்க 💧",
+    val mithraDialogueAccepted: String = "அப்பா சூப்பர்! நல்லா தண்ணி குடிச்சிட்டீங்க! 🎉",
+    val mithraDialogueRefused: String = "அப்பா அப்புறம் மறக்காம தண்ணி குடிங்க! 🥺",
+    val momDialoguePrompt: String = "ஏங்க தண்ணி குடிங்க 💧",
+    val momDialogueAccepted: String = "ரொம்ப நல்லதுங்க, உடம்பை நல்லா பார்த்துக்கோங்க! 💛",
+    val momDialogueRefused: String = "வேலை முக்கியம் தான், ஆனா தண்ணி குடிக்க மறந்துடாதீங்க! 😤",
+    val customSheetUri: String = "",
+    val customDialoguePrompt: String = "Hydration check! Drink a glass of water 💧",
+    val customDialogueAccepted: String = "Awesome! Stay hydrated and energized! 🌟",
+    val customDialogueRefused: String = "Take care of yourself, remember to drink later! 🫡"
 )
 

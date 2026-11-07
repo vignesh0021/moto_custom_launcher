@@ -1,5 +1,6 @@
 package com.motorola.launcher.ui.components
 
+import android.graphics.Bitmap
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -48,11 +49,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -61,8 +64,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.motorola.launcher.R
+import com.motorola.launcher.data.companion.CharacterCompanionSprites
+import com.motorola.launcher.data.companion.CharacterExpression
+import com.motorola.launcher.data.companion.CharacterPose
+import com.motorola.launcher.data.companion.CharacterSheetEngine
 import com.motorola.launcher.system.rememberCompanionVoiceManager
 import com.motorola.launcher.ui.model.CompanionStyle
+import com.motorola.launcher.ui.model.CustomizationSettings
 import com.motorola.launcher.ui.model.MarvelHeroProtocol
 import com.motorola.launcher.ui.theme.LocalCustomization
 import com.motorola.launcher.ui.theme.StarkEmerald
@@ -78,16 +86,16 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * State of user interaction with the Marvel Superhero Screen Companion.
+ * State of user interaction with the Marvel Superhero or Character Companion.
  */
 enum class HydrationState {
-    PROMPT,     // Hero arrives asking user to drink water
-    ACCEPTED,   // User tapped "Drank it ✓" (Hero celebrates with signature action)
-    REFUSED     // User tapped "Later" (Hero nods understandingly)
+    PROMPT,     // Companion arrives asking user to drink water
+    ACCEPTED,   // User tapped "Drank it ✓" (celebrates with signature action & dialogue)
+    REFUSED     // User tapped "Later" (nods understandingly / warning reminder)
 }
 
 /**
- * Maps each Marvel Hero to its real 3D Front (dialogue/celebration) and Side (marching walk) drawables.
+ * Maps each Marvel Hero to its 3D Front (dialogue/celebration) and Side (marching walk) drawables.
  */
 private fun getHeroDrawables(hero: MarvelHeroProtocol): Pair<Int, Int> {
     return when (hero) {
@@ -100,20 +108,19 @@ private fun getHeroDrawables(hero: MarvelHeroProtocol): Pair<Int, Int> {
         MarvelHeroProtocol.SPIDER_MAN -> Pair(R.drawable.hero_spider_man_front, R.drawable.hero_spider_man_side)
         MarvelHeroProtocol.BLACK_WIDOW -> Pair(R.drawable.hero_black_widow_front, R.drawable.hero_black_widow_side)
         MarvelHeroProtocol.AVENGERS_UNIFIED -> Pair(R.drawable.hero_iron_man_front, R.drawable.hero_iron_man_side)
-        else -> Pair(R.drawable.hero_iron_man_front, R.drawable.hero_iron_man_side)
     }
 }
 
 /**
- * Real 3D Animated Marvel Superhero Screen Companion.
- * Walks all the way across the full width of the screen from left to right.
+ * Real Multi-Frame Animated Character & Superhero Companion.
+ * Walks horizontally across the full width of the screen above the bottom dock.
  *
- * Real Walking Gait Cycle:
- * - Traverses horizontally across the screen above the bottom dock.
- * - Side-profile stride with real stepping bob, stride rocking tilt, and expanding ground shadow.
- * - Pauses near screen center, smoothly transitions to the Front-facing 3D hero with floating speech HUD.
- * - Interactive responses: "Drank it ✓" (celebration jump, quote & sip count increment) or "Later".
- * - Resumes side-profile walk across to the right edge and exits off-screen.
+ * Real Walk Gait Cycle:
+ * - Multi-frame animation: cycles between SIDE stride and 3/4 turn stride during walk phases.
+ * - Dynamic stepping bob and stride contact ground shadow.
+ * - Pauses near screen center and transitions to FRONT turnaround or dialogue facial expression.
+ * - Expressive responses with Tamil & English editable speech bubble and acoustic voice feedback.
+ * - Resumes walking sequence across to the right edge and exits off-screen.
  */
 @Composable
 fun MarvelHydrationCompanion(
@@ -126,6 +133,7 @@ fun MarvelHydrationCompanion(
 ) {
     if (!visible) return
 
+    val context = LocalContext.current
     val view = LocalView.current
     val customization = LocalCustomization.current
     val companionStyle = customization.companionStyle
@@ -133,6 +141,17 @@ fun MarvelHydrationCompanion(
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     val voiceManager = rememberCompanionVoiceManager()
+
+    val sheetEngine = remember(context) { CharacterSheetEngine.getInstance(context) }
+    val isCustomSheetCompanion = companionStyle == CompanionStyle.MITHRA ||
+            companionStyle == CompanionStyle.MITHRA_MOM ||
+            companionStyle == CompanionStyle.CUSTOM_SHEET
+
+    val companionSprites: CharacterCompanionSprites? = remember(companionStyle, customization.customSheetUri) {
+        if (isCustomSheetCompanion) {
+            sheetEngine.getSprites(companionStyle, customization.customSheetUri)
+        } else null
+    }
 
     val screenWidthDp = configuration.screenWidthDp.toFloat()
     val startX = -110f
@@ -199,11 +218,11 @@ fun MarvelHydrationCompanion(
     // Voice announcement on arrival at screen center
     LaunchedEffect(isWalking) {
         if (!isWalking && state == HydrationState.PROMPT && customization.companionVoiceEnabled) {
-            voiceManager.speakHeroPrompt(hero, companionStyle)
+            voiceManager.speakPrompt(customization)
         }
     }
 
-    // Footstep haptics (Hulk ground thud)
+    // Footstep haptics
     LaunchedEffect(walkPhase.value) {
         if (isWalking && hero == MarvelHeroProtocol.HULK && customization.hapticFeedback) {
             if (cos(walkPhase.value) > 0.92f) {
@@ -227,18 +246,17 @@ fun MarvelHydrationCompanion(
                 .offset { IntOffset(currentX.roundToPx(), 0) }
                 .padding(bottom = 98.dp)
         ) {
-            // 1. Floating Superhero Speech Bubble (Appears when paused at screen center)
+            // 1. Floating Speech Bubble (Appears when paused at screen center)
             AnimatedVisibility(
                 visible = !isWalking,
                 enter = fadeIn(tween(260)) + scaleIn(tween(260), initialScale = 0.85f),
                 exit = fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.85f)
             ) {
                 HeroSpeechBubble(
-                    hero = hero,
-                    style = companionStyle,
+                    customization = customization,
                     state = state,
                     glassesCount = glassesCount,
-                    accentColor = hero.primary,
+                    accentColor = if (isCustomSheetCompanion) Color(0xFF00E5FF) else hero.primary,
                     onAccept = {
                         if (customization.hapticFeedback) {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -246,19 +264,18 @@ fun MarvelHydrationCompanion(
                         state = HydrationState.ACCEPTED
                         onAcceptWater()
                         if (customization.companionVoiceEnabled) {
-                            voiceManager.speakHeroAccepted(hero, companionStyle)
+                            voiceManager.speakAccepted(customization)
                         }
 
                         coroutineScope.launch {
-                            // Signature celebration bounce / flex
+                            // Celebration bounce
                             launch {
-                                celebrationBounce.animateTo(-24f, tween(160, easing = FastOutSlowInEasing))
+                                celebrationBounce.animateTo(-26f, tween(160, easing = FastOutSlowInEasing))
                                 celebrationBounce.animateTo(0f, tween(160, easing = FastOutSlowInEasing))
-                                celebrationBounce.animateTo(-12f, tween(130, easing = FastOutSlowInEasing))
+                                celebrationBounce.animateTo(-14f, tween(130, easing = FastOutSlowInEasing))
                                 celebrationBounce.animateTo(0f, tween(130, easing = FastOutSlowInEasing))
                             }
-                            delay(2000)
-                            // Resume walking all the way across to the right edge and exit
+                            delay(2200)
                             exitWalkOff(walkXDp, walkPhase, exitX, onDismiss)
                         }
                     },
@@ -269,11 +286,11 @@ fun MarvelHydrationCompanion(
                         state = HydrationState.REFUSED
                         onRefuseWater()
                         if (customization.companionVoiceEnabled) {
-                            voiceManager.speakHeroRefused(hero, companionStyle)
+                            voiceManager.speakRefused(customization)
                         }
 
                         coroutineScope.launch {
-                            delay(1200)
+                            delay(1400)
                             exitWalkOff(walkXDp, walkPhase, exitX, onDismiss)
                         }
                     }
@@ -282,7 +299,7 @@ fun MarvelHydrationCompanion(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 2. Real 3D Character Avatar with Speech Pointer Tail
+            // 2. Real Character Avatar presentation
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -296,7 +313,7 @@ fun MarvelHydrationCompanion(
                                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             }
                             coroutineScope.launch {
-                                celebrationBounce.animateTo(-16f, tween(120))
+                                celebrationBounce.animateTo(-18f, tween(120))
                                 celebrationBounce.animateTo(0f, tween(120))
                             }
                         }
@@ -319,18 +336,30 @@ fun MarvelHydrationCompanion(
                     }
                 }
 
-                // Character Sprite Presentation
-                val (frontRes, sideRes) = getHeroDrawables(hero)
-                val isHulk = hero == MarvelHeroProtocol.HULK
-                val spriteW = if (isHulk) 80.dp else 70.dp
-                val spriteH = if (isHulk) 124.dp else 115.dp
+                // Sprite Presentation Dimensions
+                val isMithra = companionStyle == CompanionStyle.MITHRA
+                val isMom = companionStyle == CompanionStyle.MITHRA_MOM
+                val isHulk = hero == MarvelHeroProtocol.HULK && companionStyle == CompanionStyle.HERO_SUIT
+
+                val spriteW = when {
+                    isMithra -> 76.dp
+                    isMom -> 72.dp
+                    isHulk -> 82.dp
+                    else -> 70.dp
+                }
+                val spriteH = when {
+                    isMithra -> 116.dp
+                    isMom -> 126.dp
+                    isHulk -> 124.dp
+                    else -> 115.dp
+                }
 
                 Box(
                     modifier = Modifier.size(width = spriteW, height = spriteH),
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    // Soft Ground Contact Shadow (expands & contracts with stride)
-                    val shadowScale = if (isWalking) 1f + 0.14f * abs(sin(walkPhase.value)) else 1f
+                    // Soft Ground Contact Shadow (expands & contracts with walk stride)
+                    val shadowScale = if (isWalking) 1f + 0.15f * abs(sin(walkPhase.value)) else 1f
                     Canvas(
                         modifier = Modifier
                             .size(width = if (isHulk) 56.dp else 46.dp, height = 8.dp)
@@ -343,8 +372,56 @@ fun MarvelHydrationCompanion(
                         )
                     }
 
-                    // Render Real 3D Model Image if HERO_SUIT, else fallback to procedural
-                    if (companionStyle == CompanionStyle.HERO_SUIT) {
+                    // Render Character
+                    if (isCustomSheetCompanion && companionSprites != null) {
+                        // Multi-Frame Walk Cycle & Dynamic Facial Expression Engine
+                        val activeBitmap: Bitmap? = if (isWalking) {
+                            sheetEngine.getWalkFrame(companionSprites, walkPhase.value)
+                        } else {
+                            when (state) {
+                                HydrationState.PROMPT -> {
+                                    companionSprites.poses[CharacterPose.FRONT]
+                                        ?: companionSprites.expressions[CharacterExpression.CURIOUS]
+                                }
+                                HydrationState.ACCEPTED -> {
+                                    companionSprites.expressions[CharacterExpression.HAPPY]
+                                        ?: companionSprites.poses[CharacterPose.FRONT]
+                                }
+                                HydrationState.REFUSED -> {
+                                    companionSprites.expressions[CharacterExpression.UPSET]
+                                        ?: companionSprites.poses[CharacterPose.FRONT]
+                                }
+                            }
+                        }
+
+                        if (activeBitmap != null) {
+                            Image(
+                                bitmap = activeBitmap.asImageBitmap(),
+                                contentDescription = companionStyle.displayName,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        if (isWalking) {
+                                            rotationZ = sin(walkPhase.value) * 3f
+                                        }
+                                    }
+                            )
+                        } else {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawMarvel3DCharacter(
+                                    hero = hero,
+                                    style = companionStyle,
+                                    walkPhase = walkPhase.value,
+                                    isBlinking = eyeBlink,
+                                    isCelebrating = state == HydrationState.ACCEPTED,
+                                    isDisappointed = state == HydrationState.REFUSED
+                                )
+                            }
+                        }
+                    } else if (companionStyle == CompanionStyle.HERO_SUIT) {
+                        // Real 3D Marvel Hero Model
+                        val (frontRes, sideRes) = getHeroDrawables(hero)
                         val activeDrawable = if (isWalking) sideRes else frontRes
                         Image(
                             painter = painterResource(id = activeDrawable),
@@ -357,7 +434,7 @@ fun MarvelHydrationCompanion(
                                 }
                         )
                     } else {
-                        // Alternate Tailored Jacket / South Indian style
+                        // Procedural fallback
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             drawMarvel3DCharacter(
                                 hero = hero,
@@ -403,18 +480,19 @@ private suspend fun exitWalkOff(
 }
 
 /**
- * Superhero Speech Bubble with character-authentic reminder dialogues.
+ * Companion Speech Bubble with Tamil and English customizable dialogues.
  */
 @Composable
 private fun HeroSpeechBubble(
-    hero: MarvelHeroProtocol,
-    style: CompanionStyle,
+    customization: CustomizationSettings,
     state: HydrationState,
     glassesCount: Int,
     accentColor: Color,
     onAccept: () -> Unit,
     onLater: () -> Unit
 ) {
+    val hero = customization.heroProtocol
+    val style = customization.companionStyle
     val bubbleShape = RoundedCornerShape(18.dp)
     val stateBorderColor = when (state) {
         HydrationState.PROMPT -> accentColor.copy(alpha = 0.9f)
@@ -424,7 +502,7 @@ private fun HeroSpeechBubble(
 
     Box(
         modifier = Modifier
-            .widthIn(min = 230.dp, max = 285.dp)
+            .widthIn(min = 230.dp, max = 295.dp)
             .shadow(16.dp, bubbleShape)
             .clip(bubbleShape)
             .background(Color(0xF509101E))
@@ -432,7 +510,7 @@ private fun HeroSpeechBubble(
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Column(horizontalAlignment = Alignment.Start) {
-            // Header: Hero Identifier & Daily Sips
+            // Header: Companion Identifier & Daily Sips
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -446,13 +524,20 @@ private fun HeroSpeechBubble(
                             .background(if (state == HydrationState.ACCEPTED) StarkEmerald else accentColor)
                     )
                     Spacer(modifier = Modifier.width(5.dp))
+                    val headerText = when (style) {
+                        CompanionStyle.MITHRA -> "MITHRA // மலர் பாப்பா"
+                        CompanionStyle.MITHRA_MOM -> "MOM // மனைவி"
+                        CompanionStyle.CUSTOM_SHEET -> "CUSTOM COMPANION"
+                        CompanionStyle.HERO_SUIT -> hero.heroName.uppercase()
+                        else -> "PIXEL FRIEND"
+                    }
                     Text(
-                        text = if (style == CompanionStyle.HERO_SUIT) hero.heroName.uppercase() else "PIXEL FRIEND",
+                        text = headerText,
                         color = accentColor,
-                        fontSize = 9.5.sp,
+                        fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
+                        letterSpacing = 1.1.sp
                     )
                 }
 
@@ -467,70 +552,117 @@ private fun HeroSpeechBubble(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Character dialogue from sheet personalities
+            // Dynamic editable dialogue text
             val (titleText, bodyText) = when (state) {
-                HydrationState.PROMPT -> when {
-                    style != CompanionStyle.HERO_SUIT -> Pair(
-                        "Hydration check, bestie 💧",
-                        "Big ideas need a little water. Take a sip?"
+                HydrationState.PROMPT -> when (style) {
+                    CompanionStyle.MITHRA -> Pair(
+                        "மலர் பாப்பா (Mithra) 🌸",
+                        customization.mithraDialoguePrompt
                     )
-                    hero == MarvelHeroProtocol.HULK -> Pair(
-                        "HULK HYDRATION CHECK! 💧",
-                        "Hulk say: Drink water now! Big muscles need water to smash!"
+                    CompanionStyle.MITHRA_MOM -> Pair(
+                        "மனைவி (Mithra's Mom) 💛",
+                        customization.momDialoguePrompt
                     )
-                    hero == MarvelHeroProtocol.IRON_MAN -> Pair(
-                        "Coolant levels critical 💧",
-                        "Arc reactor needs regular fluid. Take a fresh sip of water!"
+                    CompanionStyle.CUSTOM_SHEET -> Pair(
+                        "Hydration Check 💧",
+                        customization.customDialoguePrompt
                     )
-                    hero == MarvelHeroProtocol.CAPTAIN_AMERICA -> Pair(
-                        "Hydration check, soldier! 💧",
-                        "Peak readiness requires regular water. Keep your discipline sharp!"
-                    )
-                    hero == MarvelHeroProtocol.THOR -> Pair(
-                        "Hear the Thunderer! ⚡💧",
-                        "A warrior must never face battle parched! Drink of the water of life!"
-                    )
-                    hero == MarvelHeroProtocol.BLACK_PANTHER -> Pair(
-                        "Wakanda reminder 💧",
-                        "Pure water sustains both the body and the warrior spirit. Drink now."
-                    )
-                    hero == MarvelHeroProtocol.DOCTOR_STRANGE -> Pair(
-                        "Mystic equilibrium 💧",
-                        "Mental clarity across all dimensions begins with hydration. Drink water!"
-                    )
-                    hero == MarvelHeroProtocol.SPIDER_MAN -> Pair(
-                        "Friendly neighborhood check! 💧",
-                        "Web-shooters need fluid and so do you! Time for a quick water break!"
-                    )
-                    hero == MarvelHeroProtocol.BLACK_WIDOW -> Pair(
-                        "Hydration protocol 💧",
-                        "Sharp reflexes start with staying hydrated. Take a sip, operative."
-                    )
-                    else -> Pair("Hydration check! 💧", "Time to drink a glass of water!")
+                    CompanionStyle.HERO_SUIT -> when (hero) {
+                        MarvelHeroProtocol.HULK -> Pair(
+                            "HULK HYDRATION CHECK! 💧",
+                            "Hulk say: Drink water now! Big muscles need water to smash!"
+                        )
+                        MarvelHeroProtocol.IRON_MAN -> Pair(
+                            "Coolant levels critical 💧",
+                            "Arc reactor needs regular fluid. Take a fresh sip of water!"
+                        )
+                        MarvelHeroProtocol.CAPTAIN_AMERICA -> Pair(
+                            "Hydration check, soldier! 💧",
+                            "Peak readiness requires regular water. Keep your discipline sharp!"
+                        )
+                        MarvelHeroProtocol.THOR -> Pair(
+                            "Hear the Thunderer! ⚡💧",
+                            "A warrior must never face battle parched! Drink of the water of life!"
+                        )
+                        MarvelHeroProtocol.BLACK_PANTHER -> Pair(
+                            "Wakanda reminder 💧",
+                            "Pure water sustains both the body and the warrior spirit. Drink now."
+                        )
+                        MarvelHeroProtocol.DOCTOR_STRANGE -> Pair(
+                            "Mystic equilibrium 💧",
+                            "Mental clarity across all dimensions begins with hydration. Drink water!"
+                        )
+                        MarvelHeroProtocol.SPIDER_MAN -> Pair(
+                            "Friendly neighborhood check! 💧",
+                            "Web-shooters need fluid and so do you! Time for a quick water break!"
+                        )
+                        MarvelHeroProtocol.BLACK_WIDOW -> Pair(
+                            "Hydration protocol 💧",
+                            "Sharp reflexes start with staying hydrated. Take a sip, operative."
+                        )
+                        else -> Pair("Hydration check! 💧", "Time to drink a glass of water!")
+                    }
+                    else -> Pair("Hydration check, bestie 💧", "Big ideas need a little water. Take a sip?")
                 }
-                HydrationState.ACCEPTED -> when {
-                    hero == MarvelHeroProtocol.HULK && style == CompanionStyle.HERO_SUIT -> Pair(
-                        "HULK SMASH DEHYDRATION! 💚",
-                        "Good job friend! Hulk happy! Muscles stay strong!"
+                HydrationState.ACCEPTED -> when (style) {
+                    CompanionStyle.MITHRA -> Pair(
+                        "அப்பா சூப்பர்! 🎉",
+                        customization.mithraDialogueAccepted
                     )
-                    hero == MarvelHeroProtocol.THOR && style == CompanionStyle.HERO_SUIT -> Pair(
-                        "ANOTHER! ⚡",
-                        "A mighty sip worthy of the golden halls of Valhalla!"
+                    CompanionStyle.MITHRA_MOM -> Pair(
+                        "ரொம்ப நல்லதுங்க! ✨",
+                        customization.momDialogueAccepted
                     )
-                    hero == MarvelHeroProtocol.SPIDER_MAN && style == CompanionStyle.HERO_SUIT -> Pair(
-                        "Web-shooters reloaded! 🕷️",
-                        "Woohoo! 100% friend energy! You rock!"
+                    CompanionStyle.CUSTOM_SHEET -> Pair(
+                        "Awesome! 🌟",
+                        customization.customDialogueAccepted
                     )
+                    CompanionStyle.HERO_SUIT -> when (hero) {
+                        MarvelHeroProtocol.HULK -> Pair(
+                            "HULK SMASH DEHYDRATION! 💚",
+                            "Good job friend! Hulk happy! Muscles stay strong!"
+                        )
+                        MarvelHeroProtocol.THOR -> Pair(
+                            "ANOTHER! ⚡",
+                            "A mighty sip worthy of the golden halls of Valhalla!"
+                        )
+                        MarvelHeroProtocol.SPIDER_MAN -> Pair(
+                            "Web-shooters reloaded! 🕷️",
+                            "Woohoo! 100% friend energy! You rock!"
+                        )
+                        else -> Pair(
+                            "Heck yeah! 🎉",
+                            "100% friend energy. Vitals operating at peak efficiency!"
+                        )
+                    }
                     else -> Pair(
                         "Heck yeah! 🎉",
                         "100% friend energy. Vitals operating at peak efficiency!"
                     )
                 }
-                HydrationState.REFUSED -> when {
-                    hero == MarvelHeroProtocol.HULK && style == CompanionStyle.HERO_SUIT -> Pair(
-                        "Hulk wait for you! 😤",
-                        "Hulk will be back soon! Drink when ready!"
+                HydrationState.REFUSED -> when (style) {
+                    CompanionStyle.MITHRA -> Pair(
+                        "அப்புறம் குடிங்க 🥺",
+                        customization.mithraDialogueRefused
                     )
+                    CompanionStyle.MITHRA_MOM -> Pair(
+                        "மறந்துடாதீங்க 😤",
+                        customization.momDialogueRefused
+                    )
+                    CompanionStyle.CUSTOM_SHEET -> Pair(
+                        "Remember later 🫡",
+                        customization.customDialogueRefused
+                    )
+                    CompanionStyle.HERO_SUIT -> when (hero) {
+                        MarvelHeroProtocol.HULK -> Pair(
+                            "Hulk wait for you! 😤",
+                            "Hulk will be back soon! Drink when ready!"
+                        )
+                        else -> Pair(
+                            "No worries! 🫡",
+                            "Take care of yourself soon, okay?"
+                        )
+                    }
                     else -> Pair(
                         "No worries! 🫡",
                         "Take care of yourself soon, okay?"
@@ -541,7 +673,7 @@ private fun HeroSpeechBubble(
             Text(
                 text = titleText,
                 color = TextPrimary,
-                fontSize = 13.5.sp,
+                fontSize = 13.sp,
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.Bold
             )
@@ -564,6 +696,15 @@ private fun HeroSpeechBubble(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val acceptText = when (style) {
+                        CompanionStyle.MITHRA, CompanionStyle.MITHRA_MOM -> "குடிச்சிட்டேன் ✓"
+                        else -> "Drank it ✓"
+                    }
+                    val laterText = when (style) {
+                        CompanionStyle.MITHRA, CompanionStyle.MITHRA_MOM -> "அப்புறம்"
+                        else -> "Later"
+                    }
+
                     // "Drank it ✓" Button
                     Box(
                         modifier = Modifier
@@ -576,9 +717,9 @@ private fun HeroSpeechBubble(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Drank it ✓",
+                            text = acceptText,
                             color = StarkEmerald,
-                            fontSize = 11.5.sp,
+                            fontSize = 11.sp,
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.Bold
                         )
@@ -596,9 +737,9 @@ private fun HeroSpeechBubble(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Later",
+                            text = laterText,
                             color = TextSecondary,
-                            fontSize = 11.5.sp,
+                            fontSize = 11.sp,
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.Medium
                         )
