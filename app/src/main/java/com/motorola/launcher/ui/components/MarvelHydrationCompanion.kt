@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -76,10 +77,12 @@ import com.motorola.launcher.ui.theme.LocalCustomization
 import com.motorola.launcher.ui.theme.StarkEmerald
 import com.motorola.launcher.ui.theme.TextPrimary
 import com.motorola.launcher.ui.theme.TextSecondary
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -147,10 +150,18 @@ fun MarvelHydrationCompanion(
             companionStyle == CompanionStyle.MITHRA_MOM ||
             companionStyle == CompanionStyle.CUSTOM_SHEET
 
-    val companionSprites: CharacterCompanionSprites? = remember(companionStyle, customization.customSheetUri) {
+    val companionSprites by produceState<CharacterCompanionSprites?>(
+        initialValue = null,
+        companionStyle,
+        customization.customSheetUri
+    ) {
         if (isCustomSheetCompanion) {
-            sheetEngine.getSprites(companionStyle, customization.customSheetUri)
-        } else null
+            value = withContext(Dispatchers.IO) {
+                sheetEngine.getSprites(companionStyle, customization.customSheetUri)
+            }
+        } else {
+            value = null
+        }
     }
 
     val screenWidthDp = configuration.screenWidthDp.toFloat()
@@ -337,21 +348,21 @@ fun MarvelHydrationCompanion(
                 }
 
                 // Sprite Presentation Dimensions
-                // Character Dimensions (Vector Animation for Mithra & Mom, 3D Hero models, Sprites for Custom Sheet)
+                // Character Dimensions (Real Video for Mithra & Mom, 3D Hero models, Sprites for Custom Sheet)
                 val isMithra = companionStyle == CompanionStyle.MITHRA
                 val isMom = companionStyle == CompanionStyle.MITHRA_MOM
-                val isVectorCompanion = isMithra || isMom
+                val isVideoCompanion = isMithra || isMom
                 val isHulk = hero == MarvelHeroProtocol.HULK && companionStyle == CompanionStyle.HERO_SUIT
 
                 val spriteW = when {
-                    isMithra -> 94.dp
-                    isMom -> 96.dp
+                    isMithra -> 108.dp
+                    isMom -> 114.dp
                     isHulk -> 82.dp
                     else -> 70.dp
                 }
                 val spriteH = when {
-                    isMithra -> 146.dp
-                    isMom -> 154.dp
+                    isMithra -> 176.dp
+                    isMom -> 184.dp
                     isHulk -> 124.dp
                     else -> 115.dp
                 }
@@ -364,7 +375,7 @@ fun MarvelHydrationCompanion(
                     val shadowScale = if (isWalking) 1f + 0.15f * abs(sin(walkPhase.value)) else 1f
                     Canvas(
                         modifier = Modifier
-                            .size(width = if (isVectorCompanion) 62.dp else if (isHulk) 56.dp else 46.dp, height = 8.dp)
+                            .size(width = if (isVideoCompanion) 72.dp else if (isHulk) 56.dp else 46.dp, height = 8.dp)
                             .graphicsLayer { scaleX = shadowScale }
                     ) {
                         drawOval(
@@ -374,16 +385,15 @@ fun MarvelHydrationCompanion(
                         )
                     }
 
-                    // Render Character (Interactive Vector Lip-Sync Animation for Mithra & Mom, 3D model for Heroes, Sprites for Custom Sheet)
-                    if (isVectorCompanion) {
-                        AnimatedVectorCompanion(
-                            style = companionStyle,
-                            viseme = voiceManager.currentViseme,
-                            isSpeaking = voiceManager.isSpeaking,
-                            walkPhase = walkPhase.value,
-                            isWalking = isWalking,
-                            isCelebrating = state == HydrationState.ACCEPTED,
-                            isDisappointed = state == HydrationState.REFUSED,
+                    // Render Character (Real Hardware-Accelerated Video for Mithra & Mom, 3D model for Heroes, Sprites for Custom Sheet)
+                    if (isVideoCompanion) {
+                        val rawId = if (isMithra) R.raw.video_mithra else R.raw.video_mithra_mom
+                        val videoBorder = if (isMithra) Color(0xFF00E5FF) else Color(0xFFFFD54F)
+                        VideoCompanionPlayer(
+                            rawResId = rawId,
+                            cornerRadius = 16.dp,
+                            borderColor = videoBorder.copy(alpha = 0.85f),
+                            isMuted = !customization.companionVoiceEnabled,
                             modifier = Modifier.fillMaxSize()
                         )
                     } else if (isCustomSheetCompanion && companionSprites != null) {

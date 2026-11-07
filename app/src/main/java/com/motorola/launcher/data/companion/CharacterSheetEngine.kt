@@ -8,9 +8,11 @@ import android.util.Log
 import android.util.LruCache
 import com.motorola.launcher.R
 import com.motorola.launcher.ui.model.CompanionStyle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.InputStream
-import java.util.ArrayDeque
 import kotlin.math.abs
+import kotlin.math.max
 
 /**
  * Poses sliced from a character sheet turnaround row.
@@ -134,10 +136,26 @@ class CharacterSheetEngine private constructor(private val context: Context) {
         }
     }
 
+    suspend fun getSpritesAsync(style: CompanionStyle, customUri: String = ""): CharacterCompanionSprites? =
+        withContext(Dispatchers.Default) {
+            getSprites(style, customUri)
+        }
+
     /**
      * Slices the master character sheet into full-body turnaround poses and 6 facial expressions.
      */
-    private fun sliceSheet(style: CompanionStyle, master: Bitmap): CharacterCompanionSprites? {
+    private fun sliceSheet(style: CompanionStyle, rawMaster: Bitmap): CharacterCompanionSprites? {
+        // Downscale large character sheet so memory & processing stay negligible
+        val maxDim = 1024
+        val master = if (rawMaster.width > maxDim || rawMaster.height > maxDim) {
+            val scale = maxDim.toFloat() / max(rawMaster.width, rawMaster.height)
+            val tw = (rawMaster.width * scale).toInt().coerceAtLeast(1)
+            val th = (rawMaster.height * scale).toInt().coerceAtLeast(1)
+            Bitmap.createScaledBitmap(rawMaster, tw, th, true)
+        } else {
+            rawMaster
+        }
+
         val w = master.width
         val h = master.height
         if (w <= 0 || h <= 0) return null
@@ -165,7 +183,7 @@ class CharacterSheetEngine private constructor(private val context: Context) {
                 val cellW = colW.coerceAtMost(w - startX)
                 if (cellW > 0 && bottomH > 0) {
                     val rawCell = Bitmap.createBitmap(master, startX, splitY, cellW, bottomH)
-                    val cleanedCell = removeBackground(rawCell, tolerance = 28)
+                    val cleanedCell = removeBackground(rawCell, tolerance = 30)
                     expressions[exprList[i]] = cleanedCell
                 }
             }
@@ -176,7 +194,7 @@ class CharacterSheetEngine private constructor(private val context: Context) {
                 // Left: Portrait (0 .. 30% width)
                 val portraitW = (w * 0.30f).toInt()
                 val rawPortrait = Bitmap.createBitmap(master, 0, 0, portraitW, splitY)
-                poses[CharacterPose.PORTRAIT] = removeBackground(rawPortrait, tolerance = 28)
+                poses[CharacterPose.PORTRAIT] = removeBackground(rawPortrait, tolerance = 30)
 
                 // Poses: Quarter (3/4), Side (walk), Front
                 val remainingW = w - portraitW
@@ -189,16 +207,16 @@ class CharacterSheetEngine private constructor(private val context: Context) {
                 val rawSide = Bitmap.createBitmap(master, sX, 0, poseW, splitY)
                 val rawFront = Bitmap.createBitmap(master, fX, 0, w - fX, splitY)
 
-                poses[CharacterPose.QUARTER] = removeBackground(rawQuarter, tolerance = 28)
-                poses[CharacterPose.SIDE] = removeBackground(rawSide, tolerance = 28)
-                poses[CharacterPose.FRONT] = removeBackground(rawFront, tolerance = 28)
+                poses[CharacterPose.QUARTER] = removeBackground(rawQuarter, tolerance = 30)
+                poses[CharacterPose.SIDE] = removeBackground(rawSide, tolerance = 30)
+                poses[CharacterPose.FRONT] = removeBackground(rawFront, tolerance = 30)
 
             } else {
                 // Mithra Mom / Custom layout:
                 // Left: Portrait (0 .. 34% width)
                 val portraitW = (w * 0.34f).toInt()
                 val rawPortrait = Bitmap.createBitmap(master, 0, 0, portraitW, splitY)
-                poses[CharacterPose.PORTRAIT] = removeBackground(rawPortrait, tolerance = 28)
+                poses[CharacterPose.PORTRAIT] = removeBackground(rawPortrait, tolerance = 30)
 
                 // 4 Turnaround Poses: Front, Quarter, Side, Back
                 val remainingW = w - portraitW
@@ -213,10 +231,10 @@ class CharacterSheetEngine private constructor(private val context: Context) {
                 val rawSide = Bitmap.createBitmap(master, p2X, 0, poseW, splitY)
                 val rawBack = Bitmap.createBitmap(master, p3X, 0, w - p3X, splitY)
 
-                poses[CharacterPose.FRONT] = removeBackground(rawFront, tolerance = 28)
-                poses[CharacterPose.QUARTER] = removeBackground(rawQuarter, tolerance = 28)
-                poses[CharacterPose.SIDE] = removeBackground(rawSide, tolerance = 28)
-                poses[CharacterPose.BACK] = removeBackground(rawBack, tolerance = 28)
+                poses[CharacterPose.FRONT] = removeBackground(rawFront, tolerance = 30)
+                poses[CharacterPose.QUARTER] = removeBackground(rawQuarter, tolerance = 30)
+                poses[CharacterPose.SIDE] = removeBackground(rawSide, tolerance = 30)
+                poses[CharacterPose.BACK] = removeBackground(rawBack, tolerance = 30)
             }
 
             return CharacterCompanionSprites(poses = poses, expressions = expressions)
@@ -228,14 +246,15 @@ class CharacterSheetEngine private constructor(private val context: Context) {
 
     /**
      * Edge-seeded flood-fill to make background transparent on any sliced sprite or custom sheet.
-     * Samples background color at borders and makes connected matching pixels transparent.
+     * Uses zero-allocation flat IntArray queue for instantaneous processing without GC churn.
      */
-    fun removeBackground(src: Bitmap, tolerance: Int = 28): Bitmap {
+    fun removeBackground(src: Bitmap, tolerance: Int = 30): Bitmap {
         val width = src.width
         val height = src.height
         if (width <= 0 || height <= 0) return src
 
-        val pixels = IntArray(width * height)
+        val totalPixels = width * height
+        val pixels = IntArray(totalPixels)
         src.getPixels(pixels, 0, width, 0, 0, width, height)
 
         // Sample background color from top-left corner
@@ -257,38 +276,40 @@ class CharacterSheetEngine private constructor(private val context: Context) {
             return abs(r - sr) <= tolerance && abs(g - sg) <= tolerance && abs(b - sb) <= tolerance
         }
 
-        val visited = BooleanArray(width * height)
-        val queue = ArrayDeque<Int>()
+        val visited = BooleanArray(totalPixels)
+        val queue = IntArray(totalPixels)
+        var head = 0
+        var tail = 0
 
         // Seed with outer perimeter edges
         for (x in 0 until width) {
             val topIdx = x
             if (isBg(pixels[topIdx])) {
                 visited[topIdx] = true
-                queue.add(topIdx)
+                queue[tail++] = topIdx
             }
             val btmIdx = (height - 1) * width + x
             if (isBg(pixels[btmIdx])) {
                 visited[btmIdx] = true
-                queue.add(btmIdx)
+                queue[tail++] = btmIdx
             }
         }
         for (y in 0 until height) {
             val leftIdx = y * width
             if (!visited[leftIdx] && isBg(pixels[leftIdx])) {
                 visited[leftIdx] = true
-                queue.add(leftIdx)
+                queue[tail++] = leftIdx
             }
             val rightIdx = y * width + (width - 1)
             if (!visited[rightIdx] && isBg(pixels[rightIdx])) {
                 visited[rightIdx] = true
-                queue.add(rightIdx)
+                queue[tail++] = rightIdx
             }
         }
 
-        // BFS flood-fill transparency
-        while (!queue.isEmpty()) {
-            val idx = queue.poll() ?: break
+        // BFS flood-fill transparency with zero allocations
+        while (head < tail) {
+            val idx = queue[head++]
             pixels[idx] = 0 // Transparent ARGB_8888
             val cx = idx % width
             val cy = idx / width
@@ -297,28 +318,28 @@ class CharacterSheetEngine private constructor(private val context: Context) {
                 val nIdx = idx - 1
                 if (!visited[nIdx] && isBg(pixels[nIdx])) {
                     visited[nIdx] = true
-                    queue.add(nIdx)
+                    queue[tail++] = nIdx
                 }
             }
             if (cx < width - 1) {
                 val nIdx = idx + 1
                 if (!visited[nIdx] && isBg(pixels[nIdx])) {
                     visited[nIdx] = true
-                    queue.add(nIdx)
+                    queue[tail++] = nIdx
                 }
             }
             if (cy > 0) {
                 val nIdx = idx - width
                 if (!visited[nIdx] && isBg(pixels[nIdx])) {
                     visited[nIdx] = true
-                    queue.add(nIdx)
+                    queue[tail++] = nIdx
                 }
             }
             if (cy < height - 1) {
                 val nIdx = idx + width
                 if (!visited[nIdx] && isBg(pixels[nIdx])) {
                     visited[nIdx] = true
-                    queue.add(nIdx)
+                    queue[tail++] = nIdx
                 }
             }
         }

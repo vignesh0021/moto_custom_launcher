@@ -34,15 +34,16 @@ import com.motorola.launcher.data.companion.CharacterExpression
 import com.motorola.launcher.data.companion.CharacterPose
 import com.motorola.launcher.data.companion.CharacterSheetEngine
 import com.motorola.launcher.R
-import com.motorola.launcher.system.VisemeShape
-import com.motorola.launcher.ui.components.AnimatedVectorCompanion
 import com.motorola.launcher.ui.components.VideoCompanionPlayer
 import com.motorola.launcher.ui.model.CompanionStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -731,8 +732,14 @@ fun SettingsCustomizationDialog(
 
                         if (isCustomSheet) {
                             val sheetEngine = remember(context) { com.motorola.launcher.data.companion.CharacterSheetEngine.getInstance(context) }
-                            val sprites = remember(selectedStyle, customization.customSheetUri) {
-                                sheetEngine.getSprites(selectedStyle, customization.customSheetUri)
+                            val sprites by produceState<com.motorola.launcher.data.companion.CharacterCompanionSprites?>(
+                                initialValue = null,
+                                selectedStyle,
+                                customization.customSheetUri
+                            ) {
+                                value = withContext(Dispatchers.IO) {
+                                    sheetEngine.getSprites(selectedStyle, customization.customSheetUri)
+                                }
                             }
                             val previewBmp = sprites?.poses?.get(com.motorola.launcher.data.companion.CharacterPose.PORTRAIT)
                                 ?: sprites?.poses?.get(com.motorola.launcher.data.companion.CharacterPose.FRONT)
@@ -752,23 +759,22 @@ fun SettingsCustomizationDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val isVectorCompanion = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA ||
+                                        val isVideoCompanion = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA ||
                                                 selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
 
-                                        if (isVectorCompanion) {
-                                            AnimatedVectorCompanion(
-                                                style = selectedStyle,
-                                                viseme = VisemeShape.REST,
-                                                isSpeaking = false,
-                                                walkPhase = 0f,
-                                                isWalking = false,
-                                                isCelebrating = false,
-                                                isDisappointed = false,
+                                        if (isVideoCompanion) {
+                                            val rawId = if (selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA) {
+                                                R.raw.video_mithra
+                                            } else {
+                                                R.raw.video_mithra_mom
+                                            }
+                                            VideoCompanionPlayer(
+                                                rawResId = rawId,
+                                                cornerRadius = 8.dp,
+                                                borderColor = themeColor.primary,
+                                                isMuted = true,
                                                 modifier = Modifier
                                                     .size(width = 46.dp, height = 70.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(Color(0x33000000))
-                                                    .border(1.dp, themeColor.primary.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                                             )
                                             Spacer(modifier = Modifier.width(10.dp))
                                         } else if (previewBmp != null) {

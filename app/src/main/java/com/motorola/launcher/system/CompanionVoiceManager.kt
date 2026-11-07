@@ -112,11 +112,13 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
                 VisemeShape.WIDE_E
             )
             var index = 0
-            while (isSpeaking) {
+            val maxCycles = 50 // Max 7 seconds timeout safety to prevent any infinite looping
+            while (isSpeaking && index < maxCycles) {
                 currentViseme = visemes[index % visemes.size]
                 index++
                 delay(140)
             }
+            isSpeaking = false
             currentViseme = VisemeShape.REST
         }
     }
