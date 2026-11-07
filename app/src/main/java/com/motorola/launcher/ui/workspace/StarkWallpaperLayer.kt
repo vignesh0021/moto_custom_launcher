@@ -98,6 +98,9 @@ fun StarkWallpaperLayer(
                 drawNebula(accent)
                 drawStars(stars, density = 1.0f)
             }
+            WallpaperPreset.AI_DAILY_GENERATIVE -> {
+                drawAiDailyGenerativeWallpaper(accent, hero)
+            }
             WallpaperPreset.SYSTEM -> Unit
         }
 
@@ -641,4 +644,63 @@ private fun DrawScope.drawAvengersUnifiedWallpaper(primary: Color, secondary: Co
         center = Offset(cx, cy)
     )
 }
+
+private fun DrawScope.drawAiDailyGenerativeWallpaper(accent: Color, hero: MarvelHeroProtocol) {
+    val dayOfYear = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+    val rnd = Random(dayOfYear * 7919L)
+
+    val primaryAlpha = 0.20f + rnd.nextFloat() * 0.15f
+    val secondaryAlpha = 0.15f + rnd.nextFloat() * 0.12f
+    val cx1 = size.width * (0.25f + rnd.nextFloat() * 0.5f)
+    val cy1 = size.height * (0.2f + rnd.nextFloat() * 0.4f)
+    drawCircle(
+        brush = Brush.radialGradient(
+            listOf(hero.primary.copy(alpha = primaryAlpha), Color.Transparent),
+            center = Offset(cx1, cy1),
+            radius = size.width * 0.85f
+        ),
+        radius = size.width * 0.85f,
+        center = Offset(cx1, cy1)
+    )
+    val cx2 = size.width * (0.15f + rnd.nextFloat() * 0.7f)
+    val cy2 = size.height * (0.6f + rnd.nextFloat() * 0.35f)
+    drawCircle(
+        brush = Brush.radialGradient(
+            listOf(hero.secondary.copy(alpha = secondaryAlpha), Color.Transparent),
+            center = Offset(cx2, cy2),
+            radius = size.width * 0.7f
+        ),
+        radius = size.width * 0.7f,
+        center = Offset(cx2, cy2)
+    )
+
+    val gridStep = 44f
+    var gx = 0f
+    val gridColor = accent.copy(alpha = 0.08f)
+    while (gx < size.width) {
+        drawLine(gridColor, Offset(gx, 0f), Offset(gx, size.height), strokeWidth = 0.8f)
+        gx += gridStep
+    }
+    var gy = 0f
+    while (gy < size.height) {
+        drawLine(gridColor, Offset(0f, gy), Offset(size.width, gy), strokeWidth = 0.8f)
+        gy += gridStep
+    }
+
+    val ringCenter = Offset(size.width / 2f, size.height * 0.45f)
+    val baseRadius = size.width * (0.28f + (dayOfYear % 5) * 0.03f)
+    drawCircle(
+        color = accent.copy(alpha = 0.22f),
+        radius = baseRadius,
+        center = ringCenter,
+        style = Stroke(width = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f))
+    )
+    drawCircle(
+        color = hero.secondary.copy(alpha = 0.16f),
+        radius = baseRadius * 1.35f,
+        center = ringCenter,
+        style = Stroke(width = 1.0f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(24f, 16f), 0f))
+    )
+}
+
 

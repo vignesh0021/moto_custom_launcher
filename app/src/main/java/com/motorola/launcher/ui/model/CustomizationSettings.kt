@@ -221,6 +221,7 @@ enum class WallpaperPreset(
     CYBER_GRID("cyber_grid", "Cyber Grid", Color(0xFF0A0F1C), Color(0xFF020308)),
     EARTH("earth", "Earth Hologram", Color(0xFF001B33), Color(0xFF02060C)),
     DEEP_SPACE("deep_space", "Deep Space", Color(0xFF12051F), Color(0xFF020107)),
+    AI_DAILY_GENERATIVE("ai_daily", "AI Daily Universe", Color(0xFF0F0A1E), Color(0xFF03010A)),
     SYSTEM("system", "My Photo", Color(0xFF1A2230), Color(0xFF0A0E14));
 
     companion object {
@@ -319,6 +320,11 @@ data class CustomizationSettings(
     val customSheetUri: String = "",
     val customDialoguePrompt: String = "Hydration check! Drink a glass of water 💧",
     val customDialogueAccepted: String = "Awesome! Stay hydrated and energized! 🌟",
-    val customDialogueRefused: String = "Take care of yourself, remember to drink later! 🫡"
+    val customDialogueRefused: String = "Take care of yourself, remember to drink later! 🫡",
+    // 5 Pillars Architectural Extensions
+    val autonomousContextEnabled: Boolean = false,
+    val gestureWorldEnabled: Boolean = true,
+    val dailyStoryMode: Boolean = true,
+    val cinematicEntranceEnabled: Boolean = true
 )
 

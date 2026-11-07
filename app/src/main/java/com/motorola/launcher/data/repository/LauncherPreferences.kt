@@ -67,7 +67,11 @@ class LauncherPreferences(context: Context) {
             customSheetUri = prefs.getString(KEY_CUSTOM_SHEET_URI, "") ?: "",
             customDialoguePrompt = prefs.getString(KEY_CUSTOM_PROMPT, "Hydration check! Drink a glass of water 💧") ?: "Hydration check! Drink a glass of water 💧",
             customDialogueAccepted = prefs.getString(KEY_CUSTOM_ACCEPTED, "Awesome! Stay hydrated and energized! 🌟") ?: "Awesome! Stay hydrated and energized! 🌟",
-            customDialogueRefused = prefs.getString(KEY_CUSTOM_REFUSED, "Take care of yourself, remember to drink later! 🫡") ?: "Take care of yourself, remember to drink later! 🫡"
+            customDialogueRefused = prefs.getString(KEY_CUSTOM_REFUSED, "Take care of yourself, remember to drink later! 🫡") ?: "Take care of yourself, remember to drink later! 🫡",
+            autonomousContextEnabled = prefs.getBoolean(KEY_AUTONOMOUS_CONTEXT, false),
+            gestureWorldEnabled = prefs.getBoolean(KEY_GESTURE_WORLD, true),
+            dailyStoryMode = prefs.getBoolean(KEY_DAILY_STORY, true),
+            cinematicEntranceEnabled = prefs.getBoolean(KEY_CINEMATIC_ENTRANCE, true)
         )
     }
 
@@ -281,6 +285,31 @@ class LauncherPreferences(context: Context) {
         )
     }
 
+    fun setAutonomousContextEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTONOMOUS_CONTEXT, enabled).apply()
+        _customization.value = _customization.value.copy(autonomousContextEnabled = enabled)
+    }
+
+    fun setGestureWorldEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GESTURE_WORLD, enabled).apply()
+        _customization.value = _customization.value.copy(gestureWorldEnabled = enabled)
+    }
+
+    fun setDailyStoryMode(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_DAILY_STORY, enabled).apply()
+        _customization.value = _customization.value.copy(dailyStoryMode = enabled)
+    }
+
+    fun setCinematicEntranceEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CINEMATIC_ENTRANCE, enabled).apply()
+        _customization.value = _customization.value.copy(cinematicEntranceEnabled = enabled)
+    }
+
+    fun setSoundEffectsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SOUND_EFFECTS, enabled).apply()
+        _customization.value = _customization.value.copy(soundEffectsEnabled = enabled)
+    }
+
     companion object {
         private const val KEY_THEME_ID = "theme_id"
         private const val KEY_SOUND_EFFECTS = "sound_effects_enabled"
@@ -312,5 +341,9 @@ class LauncherPreferences(context: Context) {
         private const val KEY_CUSTOM_PROMPT = "custom_prompt"
         private const val KEY_CUSTOM_ACCEPTED = "custom_accepted"
         private const val KEY_CUSTOM_REFUSED = "custom_refused"
+        private const val KEY_AUTONOMOUS_CONTEXT = "autonomous_context_enabled"
+        private const val KEY_GESTURE_WORLD = "gesture_world_enabled"
+        private const val KEY_DAILY_STORY = "daily_story_mode"
+        private const val KEY_CINEMATIC_ENTRANCE = "cinematic_entrance_enabled"
     }
 }

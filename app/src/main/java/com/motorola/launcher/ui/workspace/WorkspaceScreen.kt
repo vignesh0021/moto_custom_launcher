@@ -80,13 +80,37 @@ fun WorkspaceScreen(
     val view = LocalView.current
     val customization = LocalCustomization.current
     val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    // Pillar 5: Cinematic Entrance Sequence
+    val entranceProgress = remember { androidx.compose.animation.core.Animatable(if (customization.cinematicEntranceEnabled) 0f else 1f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (customization.cinematicEntranceEnabled) {
+            if (customization.soundEffectsEnabled) {
+                com.motorola.launcher.system.LauncherSoundManager.playSound(
+                    view.context,
+                    com.motorola.launcher.system.LauncherSoundManager.SoundEvent.QUANTUM_WARP,
+                    soundEnabled = true
+                )
+            }
+            entranceProgress.animateTo(
+                1f,
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = 450,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                )
+            )
+        }
+    }
 
     val tap: (() -> Unit) -> () -> Unit = { action ->
         {
             com.motorola.launcher.system.LauncherFeedback.performFeedback(
                 view = view,
                 hapticEnabled = customization.hapticFeedback,
-                soundEnabled = customization.soundEffectsEnabled
+                soundEnabled = customization.soundEffectsEnabled,
+                soundEvent = com.motorola.launcher.system.LauncherSoundManager.SoundEvent.APP_CLICK
             )
             action()
         }
@@ -97,10 +121,12 @@ fun WorkspaceScreen(
             .fillMaxSize()
             .graphicsLayer {
                 val p = progressProvider()
-                val scale = 1.0f - (0.08f * p)
+                val ep = entranceProgress.value
+                val scale = (1.0f - (0.08f * p)) * (0.90f + (0.10f * ep))
                 scaleX = scale
                 scaleY = scale
-                alpha = (1.0f - (p * 1.8f)).coerceIn(0.0f, 1.0f)
+                alpha = ((1.0f - (p * 1.8f)).coerceIn(0.0f, 1.0f)) * ep
+                rotationZ = (1.0f - ep) * 4f
             }
             .statusBarsPadding()
             .navigationBarsPadding()
@@ -121,30 +147,109 @@ fun WorkspaceScreen(
                 .background(Brush.horizontalGradient(listOf(Color.Transparent, marvelTheme.colors.glow)))
         )
 
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // TOP: Clock
-            DigitalClock(
-                telemetry = telemetry,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+        if (isLandscape) {
+            // Landscape Bridge Layout
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left Column: Clock & diagnostics
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    DigitalClock(telemetry = telemetry)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HudPill(text = "DIAGNOSTICS", onClick = tap(onOpenDiagnostics))
+                }
 
-            // CENTRE: All-In-One Marvel Command Core + Quantum Resonance
-            Box(contentAlignment = Alignment.Center) {
-                QuantumResonanceOverlay(
-                    isActive = telemetry.isCharging || telemetry.batteryLevel > 80,
-                    modifier = Modifier.size(320.dp)
-                )
-                ReactorCore(
+                // Center Column: Core
+                Box(contentAlignment = Alignment.Center) {
+                    QuantumResonanceOverlay(
+                        isActive = telemetry.isCharging || telemetry.batteryLevel > 80,
+                        modifier = Modifier.size(240.dp)
+                    )
+                    ReactorCore(
+                        telemetry = telemetry,
+                        onCoreClick = onOpenDiagnostics,
+                        onOpenQuickControls = onOpenQuickControls,
+                        onOpenCustomization = onOpenCustomization,
+                        size = 190.dp
+                    )
+                }
+
+                // Right Column: Dock & Drawer trigger
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    HudPill(text = marvelTheme.dockStyle.pillText, onClick = tap(onOpenDrawerClick))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val dockShape = chamferedShape(cutSize = marvelTheme.dockStyle.cutCornerSize)
+                    val displayedDock = dockApps.take(4)
+                    Box(
+                        modifier = Modifier
+                            .clip(dockShape)
+                            .background(marvelTheme.dockStyle.glassColor)
+                            .border(1.dp, marvelTheme.colors.hudBorder, dockShape)
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            for (item in displayedDock) {
+                                FuturisticAppIcon(
+                                    app = item,
+                                    onClick = tap { onAppClick(item) },
+                                    onLongClick = {
+                                        com.motorola.launcher.system.LauncherFeedback.performFeedback(
+                                            view = view,
+                                            hapticEnabled = customization.hapticFeedback,
+                                            soundEnabled = customization.soundEffectsEnabled,
+                                            isLongPress = true
+                                        )
+                                        onAppLongClick(item)
+                                    },
+                                    iconSize = 40.dp,
+                                    showLabel = false
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Portrait Layout (Standard)
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // TOP: Clock
+                DigitalClock(
                     telemetry = telemetry,
-                    onCoreClick = onOpenDiagnostics,
-                    onOpenQuickControls = onOpenQuickControls,
-                    onOpenCustomization = onOpenCustomization,
-                    size = 230.dp
+                    modifier = Modifier.padding(top = 8.dp)
                 )
+
+                // CENTRE: All-In-One Marvel Command Core + Quantum Resonance
+                Box(contentAlignment = Alignment.Center) {
+                    QuantumResonanceOverlay(
+                        isActive = telemetry.isCharging || telemetry.batteryLevel > 80,
+                        modifier = Modifier.size(320.dp)
+                    )
+                    ReactorCore(
+                        telemetry = telemetry,
+                        onCoreClick = onOpenDiagnostics,
+                        onOpenQuickControls = onOpenQuickControls,
+                        onOpenCustomization = onOpenCustomization,
+                        size = 230.dp
+                    )
+                }
             }
 
             // BOTTOM: Drawer trigger + dock

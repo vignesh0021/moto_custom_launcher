@@ -37,6 +37,13 @@ import kotlinx.coroutines.launch
 import com.motorola.launcher.ui.theme.MotoLauncherTheme
 import com.motorola.launcher.ui.workspace.StarkWallpaperLayer
 import com.motorola.launcher.ui.workspace.WorkspaceScreen
+import androidx.compose.runtime.DisposableEffect
+import com.motorola.launcher.ui.gesture.rememberGestureWorldState
+import com.motorola.launcher.ui.gesture.GestureWorldRotationEffect
+import com.motorola.launcher.ui.gesture.heroGestureTransform
+import com.motorola.launcher.ui.gesture.edgeSwipeGesture
+import com.motorola.launcher.system.ContextualLauncherEngine
+import com.motorola.launcher.system.LauncherSoundManager
 import kotlinx.collections.immutable.toImmutableList
 
 /**
@@ -98,6 +105,13 @@ fun LauncherRoot(
 
     val launchAppWithAnimation: (AppItem) -> Unit = { item ->
         launchingApp = item
+        if (customization.soundEffectsEnabled) {
+            LauncherSoundManager.playSound(
+                context,
+                LauncherSoundManager.SoundEvent.APP_CLICK,
+                soundEnabled = true
+            )
+        }
         coroutineScope.launch {
             if (!isReducedMotion) {
                 launchAnimationProgress.snapTo(0f)
@@ -134,6 +148,50 @@ fun LauncherRoot(
     }
 
     val gestureState = rememberDrawerGestureState(wallpaperZoomController)
+
+    // Pillar 1: Gesture-Driven World State & Orientation Sensing
+    val gestureWorldState = rememberGestureWorldState(
+        currentHero = customization.heroProtocol,
+        currentColor = customization.themeColor
+    )
+    GestureWorldRotationEffect(gestureWorldState)
+
+    // Pillar 2: Autonomous Context Adaptation (Time, Battery, In-Transit)
+    val contextualEngine = remember { ContextualLauncherEngine(context) }
+    DisposableEffect(contextualEngine) {
+        contextualEngine.start()
+        onDispose { contextualEngine.stop() }
+    }
+    val contextSnapshot by contextualEngine.contextState.collectAsState()
+    LaunchedEffect(customization.autonomousContextEnabled, contextSnapshot) {
+        if (customization.autonomousContextEnabled) {
+            val suggestedHero = contextSnapshot.suggestedHero
+            if (suggestedHero != customization.heroProtocol) {
+                repository.preferences.updateHeroProtocol(suggestedHero)
+            }
+            val suggestedColor = contextSnapshot.suggestedColor
+            if (suggestedColor != customization.themeColor) {
+                repository.preferences.updateThemeColor(suggestedColor)
+            }
+        }
+    }
+
+    // Pillar 3: Daily Family Story Mode (Mithra & Mithra Mom story rotation, skipping non-family)
+    LaunchedEffect(customization.dailyStoryMode) {
+        if (customization.dailyStoryMode) {
+            val cal = java.util.Calendar.getInstance()
+            val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+            val expectedCompanion = if (hour in 6..16) {
+                com.motorola.launcher.ui.model.CompanionStyle.MITHRA
+            } else {
+                com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
+            }
+            if (customization.companionStyle != expectedCompanion &&
+                customization.companionStyle != com.motorola.launcher.ui.model.CompanionStyle.CUSTOM_SHEET) {
+                repository.preferences.updateCompanionStyle(expectedCompanion)
+            }
+        }
+    }
 
     // Back button closes active sheets/dialogs or app drawer in priority order
     BackHandler(
@@ -180,6 +238,36 @@ fun LauncherRoot(
                 .fillMaxSize()
                 .drawerSwipeGesture(gestureState, maxDragPx)
 
+            val workspaceGestureModifier = gestureModifier
+                .heroGestureTransform(
+                    state = gestureWorldState,
+                    enabled = customization.gestureWorldEnabled && !gestureState.isDrawerVisible,
+                    onHeroChanged = { newHero ->
+                        repository.preferences.updateHeroProtocol(newHero)
+                        if (customization.soundEffectsEnabled) {
+                            LauncherSoundManager.playSound(
+                                context,
+                                LauncherSoundManager.SoundEvent.HERO_CYCLE,
+                                soundEnabled = true
+                            )
+                        }
+                    }
+                )
+                .edgeSwipeGesture(
+                    state = gestureWorldState,
+                    enabled = customization.gestureWorldEnabled && !gestureState.isDrawerVisible,
+                    onColorChanged = { newColor ->
+                        repository.preferences.updateThemeColor(newColor)
+                        if (customization.soundEffectsEnabled) {
+                            LauncherSoundManager.playSound(
+                                context,
+                                LauncherSoundManager.SoundEvent.COLOR_SWIPE,
+                                soundEnabled = true
+                            )
+                        }
+                    }
+                )
+
             // Background: selected HUD wallpaper, or readability scrim over the user's photo
             StarkWallpaperLayer(
                 preset = customization.wallpaper,
@@ -198,7 +286,7 @@ fun LauncherRoot(
                 onOpenDiagnostics = { showJarvisDashboard = true },
                 onOpenQuickControls = { showQuickControls = true },
                 onOpenCustomization = { showCustomization = true },
-                modifier = gestureModifier
+                modifier = workspaceGestureModifier
             )
 
             // Screen 2: App Drawer Layer (Active when drawer is visible or transitioning)

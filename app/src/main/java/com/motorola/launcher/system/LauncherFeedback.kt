@@ -22,7 +22,8 @@ object LauncherFeedback {
         view: View,
         hapticEnabled: Boolean,
         soundEnabled: Boolean,
-        isLongPress: Boolean = false
+        isLongPress: Boolean = false,
+        soundEvent: LauncherSoundManager.SoundEvent = LauncherSoundManager.SoundEvent.APP_CLICK
     ) {
         if (hapticEnabled) {
             val hapticConstant = if (isLongPress) {
@@ -34,7 +35,7 @@ object LauncherFeedback {
         }
 
         if (soundEnabled) {
-            view.playSoundEffect(SoundEffectConstants.CLICK)
+            LauncherSoundManager.playSound(view.context, soundEvent, soundEnabled = true)
         }
     }
 

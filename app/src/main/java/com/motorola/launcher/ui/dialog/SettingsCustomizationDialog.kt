@@ -973,6 +973,26 @@ fun SettingsCustomizationDialog(
                         checked = customization.soundEffectsEnabled,
                         onCheckedChange = { preferences.toggleSoundEffects(it) }
                     )
+                    PreferenceToggleRow(
+                        label = "Gesture-Driven World (Pinch / Rotate)",
+                        checked = customization.gestureWorldEnabled,
+                        onCheckedChange = { preferences.setGestureWorldEnabled(it) }
+                    )
+                    PreferenceToggleRow(
+                        label = "Autonomous Context Adaptation (Auto Theme)",
+                        checked = customization.autonomousContextEnabled,
+                        onCheckedChange = { preferences.setAutonomousContextEnabled(it) }
+                    )
+                    PreferenceToggleRow(
+                        label = "Daily Family Story Rotation",
+                        checked = customization.dailyStoryMode,
+                        onCheckedChange = { preferences.setDailyStoryMode(it) }
+                    )
+                    PreferenceToggleRow(
+                        label = "Cinematic Entrance Sequence",
+                        checked = customization.cinematicEntranceEnabled,
+                        onCheckedChange = { preferences.setCinematicEntranceEnabled(it) }
+                    )
                 }
             }
 
