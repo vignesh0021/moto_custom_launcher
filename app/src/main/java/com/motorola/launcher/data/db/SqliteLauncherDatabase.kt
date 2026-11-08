@@ -69,7 +69,6 @@ class SqliteLauncherDatabase private constructor(context: Context) : LauncherDat
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            // Version upgrade: ensure hydration tables and indices exist
             createTables(db)
         }
 
@@ -98,9 +97,12 @@ class SqliteLauncherDatabase private constructor(context: Context) : LauncherDat
                     endTime TEXT NOT NULL,
                     enabled INTEGER NOT NULL,
                     selectedCharacters TEXT NOT NULL,
+                    language TEXT NOT NULL,
+                    voiceEnabled INTEGER NOT NULL,
+                    soundEnabled INTEGER NOT NULL,
+                    snoozeDurationMinutes INTEGER NOT NULL,
                     quietHoursEnabled INTEGER NOT NULL,
-                    pausedUntilTimestamp INTEGER NOT NULL,
-                    snoozeCountToday INTEGER NOT NULL
+                    pausedUntilTimestamp INTEGER NOT NULL
                 )
                 """.trimIndent()
             )
@@ -108,15 +110,15 @@ class SqliteLauncherDatabase private constructor(context: Context) : LauncherDat
             db.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS apps (
-                    componentKey TEXT PRIMARY KEY NOT NULL,
-                    packageName TEXT NOT NULL,
-                    className TEXT NOT NULL,
+                    component_key TEXT PRIMARY KEY NOT NULL,
+                    package_name TEXT NOT NULL,
+                    class_name TEXT NOT NULL,
                     label TEXT NOT NULL,
-                    userHandleId INTEGER NOT NULL,
-                    installTime INTEGER NOT NULL,
-                    lastUpdateTime INTEGER NOT NULL,
+                    user_serial INTEGER NOT NULL,
+                    install_time INTEGER NOT NULL,
+                    last_update_time INTEGER NOT NULL,
                     category INTEGER NOT NULL,
-                    isWorkProfile INTEGER NOT NULL
+                    is_work_profile INTEGER NOT NULL
                 )
                 """.trimIndent()
             )
@@ -349,9 +351,12 @@ class SqliteLauncherDatabase private constructor(context: Context) : LauncherDat
                     put("endTime", settings.endTime)
                     put("enabled", if (settings.enabled) 1 else 0)
                     put("selectedCharacters", settings.selectedCharacters)
+                    put("language", settings.language)
+                    put("voiceEnabled", if (settings.voiceEnabled) 1 else 0)
+                    put("soundEnabled", if (settings.soundEnabled) 1 else 0)
+                    put("snoozeDurationMinutes", settings.snoozeDurationMinutes)
                     put("quietHoursEnabled", if (settings.quietHoursEnabled) 1 else 0)
                     put("pausedUntilTimestamp", settings.pausedUntilTimestamp)
-                    put("snoozeCountToday", settings.snoozeCountToday)
                 }
                 db.insertWithOnConflict("hydration_settings", null, values, SQLiteDatabase.CONFLICT_REPLACE)
                 settingsState.value = settings.copy(id = 1)
@@ -362,21 +367,24 @@ class SqliteLauncherDatabase private constructor(context: Context) : LauncherDat
             val db = readableDatabase
             try {
                 db.rawQuery(
-                    "SELECT id, dailyGoalMl, reminderIntervalMinutes, startTime, endTime, enabled, selectedCharacters, quietHoursEnabled, pausedUntilTimestamp, snoozeCountToday FROM hydration_settings WHERE id = 1 LIMIT 1",
+                    "SELECT id, dailyGoalMl, reminderIntervalMinutes, startTime, endTime, enabled, selectedCharacters, language, voiceEnabled, soundEnabled, snoozeDurationMinutes, quietHoursEnabled, pausedUntilTimestamp FROM hydration_settings WHERE id = 1 LIMIT 1",
                     null
                 ).use { cursor ->
                     if (cursor.moveToFirst()) {
                         return HydrationSettingsEntity(
-                            id = cursor.getLong(0),
+                            id = cursor.getInt(0),
                             dailyGoalMl = cursor.getInt(1),
                             reminderIntervalMinutes = cursor.getInt(2),
                             startTime = cursor.getString(3),
                             endTime = cursor.getString(4),
                             enabled = cursor.getInt(5) == 1,
                             selectedCharacters = cursor.getString(6),
-                            quietHoursEnabled = cursor.getInt(7) == 1,
-                            pausedUntilTimestamp = cursor.getLong(8),
-                            snoozeCountToday = cursor.getInt(9)
+                            language = cursor.getString(7),
+                            voiceEnabled = cursor.getInt(8) == 1,
+                            soundEnabled = cursor.getInt(9) == 1,
+                            snoozeDurationMinutes = cursor.getInt(10),
+                            quietHoursEnabled = cursor.getInt(11) == 1,
+                            pausedUntilTimestamp = cursor.getLong(12)
                         )
                     }
                 }
@@ -390,6 +398,8 @@ class SqliteLauncherDatabase private constructor(context: Context) : LauncherDat
         override suspend fun getAllAppsSync(): List<AppEntity> = emptyList()
         override fun searchAppsFts(query: String): Flow<List<AppEntity>> = flowOf(emptyList())
         override suspend fun insertOrUpdateAll(apps: List<AppEntity>) {}
-        override suspend fun replaceAll(apps: List<AppEntity>) {}
+        override suspend fun deleteByKeys(keys: List<String>) {}
+        override suspend fun deletePackage(packageName: String, userSerial: Long) {}
+        override suspend fun clearAll() {}
     }
 }
