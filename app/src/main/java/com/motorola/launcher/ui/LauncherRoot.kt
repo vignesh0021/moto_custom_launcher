@@ -42,8 +42,10 @@ import com.motorola.launcher.ui.gesture.rememberGestureWorldState
 import com.motorola.launcher.ui.gesture.GestureWorldRotationEffect
 import com.motorola.launcher.ui.gesture.heroGestureTransform
 import com.motorola.launcher.ui.gesture.edgeSwipeGesture
-import com.motorola.launcher.system.ContextualLauncherEngine
-import com.motorola.launcher.system.LauncherSoundManager
+import com.motorola.launcher.system.companion.FamilyCompanionOrchestrator
+import com.motorola.launcher.ui.components.AnimatedWaterGlassIndicator
+import com.motorola.launcher.ui.dialog.HydrationDashboardSheet
+import com.motorola.launcher.ui.dialog.HydrationSettingsDialog
 import kotlinx.collections.immutable.toImmutableList
 
 /**
@@ -60,6 +62,7 @@ fun LauncherRoot(
     wallpaperZoomController: WallpaperZoomController,
     telemetryManager: SystemTelemetryManager,
     homePressEvents: kotlinx.coroutines.flow.SharedFlow<Unit>? = null,
+    hydrationDashboardEvents: kotlinx.coroutines.flow.SharedFlow<Unit>? = null,
     modifier: Modifier = Modifier
 ) {
     val allApps by repository.appsState.collectAsState()
@@ -133,6 +136,19 @@ fun LauncherRoot(
     var showQuickControls by remember { mutableStateOf(false) }
     var showCustomization by remember { mutableStateOf(false) }
     var showHydrationReminder by remember { mutableStateOf(false) }
+    var showHydrationDashboard by remember { mutableStateOf(false) }
+    var showHydrationSettings by remember { mutableStateOf(false) }
+
+    val orchestrator = remember(context) { FamilyCompanionOrchestrator.getInstance(context) }
+    val todayIntakeMl by orchestrator.todayTotalMl.collectAsState()
+    val progressRatio by orchestrator.progressRatio.collectAsState()
+    val hydrationSettings by orchestrator.settings.collectAsState()
+
+    LaunchedEffect(hydrationDashboardEvents) {
+        hydrationDashboardEvents?.collect {
+            showHydrationDashboard = true
+        }
+    }
 
     // Marvel Hydration Companion check with user-configurable interval
     LaunchedEffect(customization.hydrationReminderEnabled, customization.hydrationIntervalMinutes) {
@@ -195,7 +211,9 @@ fun LauncherRoot(
 
     // Back button closes active sheets/dialogs or app drawer in priority order
     BackHandler(
-        enabled = showHydrationReminder ||
+        enabled = showHydrationSettings ||
+                showHydrationDashboard ||
+                showHydrationReminder ||
                 selectedAppContextApp != null ||
                 showQuickAccessCustomizer ||
                 showJarvisDashboard ||
@@ -204,6 +222,8 @@ fun LauncherRoot(
                 gestureState.isDrawerVisible
     ) {
         when {
+            showHydrationSettings -> showHydrationSettings = false
+            showHydrationDashboard -> showHydrationDashboard = false
             showHydrationReminder -> showHydrationReminder = false
             selectedAppContextApp != null -> selectedAppContextApp = null
             showQuickAccessCustomizer -> showQuickAccessCustomizer = false
@@ -218,6 +238,8 @@ fun LauncherRoot(
     // Reset back to main workspace when system Home button (center click / nav bar) is pressed
     LaunchedEffect(homePressEvents) {
         homePressEvents?.collect {
+            showHydrationSettings = false
+            showHydrationDashboard = false
             showHydrationReminder = false
             selectedAppContextApp = null
             showQuickAccessCustomizer = false
@@ -342,11 +364,57 @@ fun LauncherRoot(
                 )
             }
 
+            // Small Animated Water Glass Indicator (Beside Companion on Home Screen)
+            if (customization.hydrationReminderEnabled && !gestureState.isDrawerVisible) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 118.dp, end = 16.dp),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
+                    AnimatedWaterGlassIndicator(
+                        progressRatio = progressRatio,
+                        consumedMl = todayIntakeMl,
+                        targetMl = hydrationSettings.dailyGoalMl,
+                        accentColor = customization.themeColor.primary,
+                        onClick = { showHydrationDashboard = true },
+                        onQuickAdd = {
+                            coroutineScope.launch {
+                                orchestrator.recordWaterIntake(250, "HOME_GLASS")
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Hydration Dashboard Modal
+            if (showHydrationDashboard) {
+                HydrationDashboardSheet(
+                    orchestrator = orchestrator,
+                    onDismiss = { showHydrationDashboard = false },
+                    onOpenSettings = {
+                        showHydrationDashboard = false
+                        showHydrationSettings = true
+                    }
+                )
+            }
+
+            // Hydration Settings Modal
+            if (showHydrationSettings) {
+                HydrationSettingsDialog(
+                    orchestrator = orchestrator,
+                    onDismiss = { showHydrationSettings = false }
+                )
+            }
+
             // Marvel Character Hourly Hydration Companion
             MarvelHydrationCompanion(
                 visible = showHydrationReminder,
                 glassesCount = customization.waterGlassesCount,
                 onAcceptWater = {
+                    coroutineScope.launch {
+                        orchestrator.recordWaterIntake(250, "COMPANION_PROMPT")
+                    }
                     repository.preferences.recordWaterAccepted()
                 },
                 onRefuseWater = {

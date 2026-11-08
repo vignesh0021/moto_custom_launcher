@@ -27,9 +27,11 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        const val EXTRA_OPEN_HYDRATION_DASHBOARD = "OPEN_HYDRATION_DASHBOARD"
     }
 
     private val homePressEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val hydrationDashboardEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var wallpaperZoomController: WallpaperZoomController? = null
     private var curvedEdgeGestureController: CurvedEdgeGestureController? = null
     private var repository: AppRepository? = null
@@ -78,13 +80,18 @@ class MainActivity : ComponentActivity() {
             telemetryManager = it
         }
 
+        if (intent.getBooleanExtra(EXTRA_OPEN_HYDRATION_DASHBOARD, false)) {
+            hydrationDashboardEvents.tryEmit(Unit)
+        }
+
         setContent {
             MotoLauncherTheme {
                 LauncherRoot(
                     repository = repo,
                     wallpaperZoomController = wpController,
                     telemetryManager = telem,
-                    homePressEvents = homePressEvents
+                    homePressEvents = homePressEvents,
+                    hydrationDashboardEvents = hydrationDashboardEvents
                 )
             }
         }
@@ -155,6 +162,9 @@ class MainActivity : ComponentActivity() {
         if (Intent.ACTION_MAIN == intent.action) {
             wallpaperZoomController?.updateDrawerProgress(0.0f)
             homePressEvents.tryEmit(Unit)
+        }
+        if (intent.getBooleanExtra(EXTRA_OPEN_HYDRATION_DASHBOARD, false)) {
+            hydrationDashboardEvents.tryEmit(Unit)
         }
     }
 

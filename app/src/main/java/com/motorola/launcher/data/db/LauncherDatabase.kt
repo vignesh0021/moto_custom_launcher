@@ -6,13 +6,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [AppEntity::class, AppFtsEntity::class],
-    version = 1,
+    entities = [
+        AppEntity::class,
+        AppFtsEntity::class,
+        WaterIntakeEntity::class,
+        HydrationSettingsEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 abstract class LauncherDatabase : RoomDatabase() {
 
     abstract fun appDao(): AppDao
+    abstract fun waterIntakeDao(): WaterIntakeDao
+    abstract fun hydrationSettingsDao(): HydrationSettingsDao
 
     companion object {
         @Volatile

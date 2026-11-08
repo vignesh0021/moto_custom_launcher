@@ -18,8 +18,12 @@ class LauncherApplication : Application() {
             // Safely initialize with default priority.
             Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT)
             Log.i("LauncherApplication", "Motorola Edge 50 Launcher Initialized successfully.")
+
+            // Initialize V2H Smart Hydration Reminder System
+            com.motorola.launcher.system.hydration.HydrationNotificationHelper.createNotificationChannel(this)
+            com.motorola.launcher.system.companion.FamilyCompanionOrchestrator.getInstance(this)
         } catch (e: Throwable) {
-            Log.w("LauncherApplication", "Thread priority initialization skipped: ${e.message}")
+            Log.w("LauncherApplication", "Initialization warning: ${e.message}")
         }
     }
 }
