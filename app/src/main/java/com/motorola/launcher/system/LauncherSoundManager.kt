@@ -39,10 +39,13 @@ object LauncherSoundManager {
     fun playSound(context: Context, event: SoundEvent, soundEnabled: Boolean) {
         if (!soundEnabled) return
 
-        // Respect device ringer mode (Silent/Vibrate suppresses audio)
-        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        if (am != null && am.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
-            return
+        try {
+            // Respect device ringer mode (Silent/Vibrate suppresses audio)
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            if (am != null && am.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
+                return
+            }
+        } catch (_: Throwable) {
         }
 
         audioScope.launch {

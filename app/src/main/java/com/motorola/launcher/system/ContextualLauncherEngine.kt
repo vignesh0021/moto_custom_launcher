@@ -98,8 +98,12 @@ class ContextualLauncherEngine(private val context: Context) {
         isRunning = true
         try {
             val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-            context.registerReceiver(batteryReceiver, filter)
-        } catch (_: Exception) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(batteryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.registerReceiver(batteryReceiver, filter)
+            }
+        } catch (_: Throwable) {
         }
         handler.post(pollRunnable)
     }
@@ -110,49 +114,53 @@ class ContextualLauncherEngine(private val context: Context) {
         handler.removeCallbacks(pollRunnable)
         try {
             context.unregisterReceiver(batteryReceiver)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
         }
     }
 
     fun refresh() {
-        val cal = Calendar.getInstance()
-        val hour = cal.get(Calendar.HOUR_OF_DAY)
+        try {
+            val cal = Calendar.getInstance()
+            val hour = cal.get(Calendar.HOUR_OF_DAY)
 
-        val batteryLevel = readBatteryLevel()
-        val isCharging = readIsCharging()
-        val isAtHome = readIsAtHome()
-        val isDnd = readIsDnd()
-        val isDriving = readIsDriving()
+            val batteryLevel = readBatteryLevel()
+            val isCharging = readIsCharging()
+            val isAtHome = readIsAtHome()
+            val isDnd = readIsDnd()
+            val isDriving = readIsDriving()
 
-        val profile = when {
-            batteryLevel in 1..19 && !isCharging -> ContextProfile.LOW_BATTERY
-            isDriving -> ContextProfile.DRIVING
-            isDnd -> ContextProfile.DND
-            hour in 5..10 -> ContextProfile.MORNING
-            hour in 11..16 -> ContextProfile.AFTERNOON
-            hour in 17..20 -> ContextProfile.EVENING
-            else -> ContextProfile.NIGHT
+            val profile = when {
+                batteryLevel in 1..19 && !isCharging -> ContextProfile.LOW_BATTERY
+                isDriving -> ContextProfile.DRIVING
+                isDnd -> ContextProfile.DND
+                hour in 5..10 -> ContextProfile.MORNING
+                hour in 11..16 -> ContextProfile.AFTERNOON
+                hour in 17..20 -> ContextProfile.EVENING
+                else -> ContextProfile.NIGHT
+            }
+
+            val minimalUi = profile == ContextProfile.LOW_BATTERY ||
+                    profile == ContextProfile.DRIVING ||
+                    profile == ContextProfile.DND
+
+            val (hero, color, wallpaper) = deriveVisuals(profile)
+
+            _contextState.value = ContextSnapshot(
+                profile = profile,
+                hour = hour,
+                batteryLevel = batteryLevel,
+                isCharging = isCharging,
+                isAtHome = isAtHome,
+                isDnd = isDnd,
+                isDriving = isDriving,
+                suggestedHero = hero,
+                suggestedColor = color,
+                suggestedWallpaper = wallpaper,
+                minimalUi = minimalUi
+            )
+        } catch (t: Throwable) {
+            android.util.Log.w("ContextualEngine", "refresh caught exception: ${t.message}")
         }
-
-        val minimalUi = profile == ContextProfile.LOW_BATTERY ||
-                profile == ContextProfile.DRIVING ||
-                profile == ContextProfile.DND
-
-        val (hero, color, wallpaper) = deriveVisuals(profile)
-
-        _contextState.value = ContextSnapshot(
-            profile = profile,
-            hour = hour,
-            batteryLevel = batteryLevel,
-            isCharging = isCharging,
-            isAtHome = isAtHome,
-            isDnd = isDnd,
-            isDriving = isDriving,
-            suggestedHero = hero,
-            suggestedColor = color,
-            suggestedWallpaper = wallpaper,
-            minimalUi = minimalUi
-        )
     }
 
     private fun deriveVisuals(
@@ -184,34 +192,58 @@ class ContextualLauncherEngine(private val context: Context) {
     }
 
     private fun readBatteryLevel(): Int {
-        val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager ?: return 100
-        val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return if (level >= 0) level else 100
+        return try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager ?: return 100
+            val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            if (level >= 0) level else 100
+        } catch (_: Throwable) {
+            100
+        }
     }
 
     private fun readIsCharging(): Boolean {
-        val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager ?: return false
-        return bm.isCharging
+        return try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager ?: return false
+            bm.isCharging
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     private fun readIsAtHome(): Boolean {
-        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return true
         return try {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return true
             val providers = lm.getProviders(true)
             providers.isNotEmpty()
-        } catch (_: SecurityException) {
+        } catch (_: Throwable) {
             true
         }
     }
 
     private fun readIsDnd(): Boolean {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return false
-        return nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
+        return try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return false
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                if (nm.isNotificationPolicyAccessGranted) {
+                    nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     private fun readIsDriving(): Boolean {
-        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
-        return am.mode == AudioManager.MODE_IN_COMMUNICATION
+        return try {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+            am.mode == AudioManager.MODE_IN_COMMUNICATION
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     companion object {
