@@ -14,7 +14,7 @@ import java.util.Calendar
  * - Recent intake cooldown (prevents reminding immediately after drinking)
  * - Timezone and daylight saving resilience
  */
-class CompanionContextManager(private val context: Context) {
+class CompanionContextManager(private val context: Context? = null) {
 
     companion object {
         private const val TAG = "CompanionContextMgr"

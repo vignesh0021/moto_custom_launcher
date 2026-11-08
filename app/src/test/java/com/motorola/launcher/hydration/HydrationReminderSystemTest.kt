@@ -59,7 +59,7 @@ class HydrationReminderSystemTest {
 
     @Test
     fun testQuietHoursWakingWindow() {
-        val contextManager = CompanionContextManager(createMockContext())
+        val contextManager = CompanionContextManager()
 
         // 1. Daytime Window: 08:00 to 22:00
         val startTime = "08:00"
@@ -102,7 +102,7 @@ class HydrationReminderSystemTest {
 
     @Test
     fun testRecentDrinkCooldown() {
-        val contextManager = CompanionContextManager(createMockContext())
+        val contextManager = CompanionContextManager()
         val settings = HydrationSettingsEntity(
             enabled = true,
             quietHoursEnabled = false
@@ -124,7 +124,7 @@ class HydrationReminderSystemTest {
 
     @Test
     fun testTemporaryPauseSuppression() {
-        val contextManager = CompanionContextManager(createMockContext())
+        val contextManager = CompanionContextManager()
         val now = System.currentTimeMillis()
 
         val pausedSettings = HydrationSettingsEntity(
@@ -144,7 +144,7 @@ class HydrationReminderSystemTest {
 
     @Test
     fun testNextReminderAdvancementAcrossSleepWindow() {
-        val contextManager = CompanionContextManager(createMockContext())
+        val contextManager = CompanionContextManager()
         val settings = HydrationSettingsEntity(
             enabled = true,
             startTime = "08:00",
@@ -208,13 +208,5 @@ class HydrationReminderSystemTest {
         assertEquals(750, grouped["2026-11-02"])
         assertEquals(2000, grouped["2026-11-03"])
         assertEquals(750, grouped["2026-11-04"])
-    }
-
-    private fun createMockContext(): android.content.Context {
-        // Return a mock or proxy Context for unit tests
-        return java.lang.reflect.Proxy.newProxyInstance(
-            android.content.Context::class.java.classLoader,
-            arrayOf(android.content.Context::class.java)
-        ) { _, _, _ -> null } as android.content.Context
     }
 }
