@@ -170,29 +170,56 @@ fun Modifier.drawerSwipeGesture(
     state: DrawerGestureState,
     maxDragPx: Float
 ): Modifier = this.pointerInput(state, maxDragPx) {
+    val touchSlop = viewConfiguration.touchSlop
     awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        // Main pass: children (buttons, dock icons) get first chance at the event.
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Main)
         val pointerId = down.id
-        var lastY = down.position.y
-        state.onDragStart(down.uptimeMillis, lastY)
+        val startX = down.position.x
+        val startY = down.position.y
+        var lastY = startY
+        var dragging = false
 
         while (true) {
-            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-            val dragChange = event.changes.firstOrNull { it.id == pointerId } ?: break
+            val event = awaitPointerEvent(pass = PointerEventPass.Main)
+            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
 
-            if (!dragChange.pressed) {
-                state.onDragEnd(dragChange.uptimeMillis, maxDragPx)
+            if (!change.pressed) {
+                if (dragging) state.onDragEnd(change.uptimeMillis, maxDragPx)
                 break
             }
 
-            val currentY = dragChange.position.y
+            // Multi-finger gestures belong to the hero transform detector
+            if (event.changes.count { it.pressed } > 1) {
+                if (dragging) state.onDragEnd(change.uptimeMillis, maxDragPx)
+                break
+            }
+
+            val currentY = change.position.y
+            if (!dragging) {
+                val totalDx = change.position.x - startX
+                val totalDy = currentY - startY
+                if (kotlin.math.abs(totalDy) > touchSlop &&
+                    kotlin.math.abs(totalDy) > kotlin.math.abs(totalDx) * 1.2f
+                ) {
+                    // Only now does this become a drawer swipe
+                    dragging = true
+                    state.onDragStart(change.uptimeMillis, currentY)
+                    lastY = currentY
+                    change.consume()
+                } else if (kotlin.math.abs(totalDx) > touchSlop) {
+                    // Horizontal movement: not ours (edge swipe / scrolling)
+                    break
+                }
+                continue
+            }
+
             val deltaY = currentY - lastY
             lastY = currentY
-
             if (kotlin.math.abs(deltaY) > 0.01f) {
-                state.onDrag(dragChange.uptimeMillis, currentY, deltaY, maxDragPx)
-                dragChange.consume()
+                state.onDrag(change.uptimeMillis, currentY, deltaY, maxDragPx)
             }
+            change.consume()
         }
     }
 }

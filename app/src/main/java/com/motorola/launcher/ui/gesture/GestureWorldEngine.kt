@@ -5,7 +5,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -16,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalConfiguration
 import com.motorola.launcher.ui.model.MarvelHeroProtocol
 import com.motorola.launcher.ui.model.ThemeColorPreset
@@ -153,56 +155,93 @@ fun Modifier.heroGestureTransform(
     enabled: Boolean = true,
     onHeroChanged: (MarvelHeroProtocol) -> Unit
 ): Modifier = if (!enabled) this else this.pointerInput(state) {
-    detectTransformGestures(panZoomLock = true) { _, pan, zoom, _ ->
-        if (abs(zoom - 1f) > 0.08f) {
-            state.onPinch(zoom, onHeroChanged)
-        } else if (abs(pan.y) > 50f) {
-            state.onTwoFingerDrag(pan.y, onHeroChanged)
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Main)
+        var startSpan = 0f
+        var startCentroidY = 0f
+        var tracking = false
+        var fired = false
+
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Main)
+            val pressed = event.changes.filter { it.pressed }
+            if (pressed.isEmpty()) break
+            // Single-finger touches are never touched here: taps and drawer swipes pass through
+            if (pressed.size < 2) continue
+
+            val p0 = pressed[0].position
+            val p1 = pressed[1].position
+            val span = (p0 - p1).getDistance()
+            val centroidY = (p0.y + p1.y) / 2f
+
+            if (!tracking) {
+                tracking = true
+                startSpan = span
+                startCentroidY = centroidY
+                continue
+            }
+            if (fired) {
+                pressed.forEach { it.consume() }
+                continue
+            }
+
+            val zoom = if (startSpan > 0f) span / startSpan else 1f
+            val panY = centroidY - startCentroidY
+            if (abs(zoom - 1f) > 0.12f) {
+                state.onPinch(zoom, onHeroChanged)
+                fired = true
+            } else if (abs(panY) > 80f) {
+                state.onTwoFingerDrag(panY, onHeroChanged)
+                fired = true
+            }
+            if (fired) pressed.forEach { it.consume() }
         }
     }
 }
 
 /**
  * Edge-swipe detector for fast theme accent color switching.
+ * Only claims the gesture after a clear horizontal drag that started at the very edge,
+ * so taps on edge dock icons are never swallowed.
  */
 fun Modifier.edgeSwipeGesture(
     state: GestureWorldState,
     enabled: Boolean = true,
     onColorChanged: (ThemeColorPreset) -> Unit
 ): Modifier = if (!enabled) this else this.pointerInput(state) {
-    awaitPointerEventScope {
+    val touchSlop = viewConfiguration.touchSlop
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Main)
+        val width = size.width.toFloat()
+        val edgePx = 24.dp.toPx()
+        val startX = down.position.x
+        val startY = down.position.y
+        if (startX > edgePx && startX < width - edgePx) return@awaitEachGesture
+
+        var swiping = false
         while (true) {
-            val event = awaitPointerEvent(PointerEventPass.Main)
-            val change = event.changes.firstOrNull() ?: continue
-            if (!change.pressed) continue
+            val e = awaitPointerEvent(PointerEventPass.Main)
+            val c = e.changes.firstOrNull { it.id == down.id } ?: break
+            val totalDx = c.position.x - startX
+            val totalDy = c.position.y - startY
 
-            val startX = change.position.x
-            val startY = change.position.y
-            val width = size.width.toFloat()
-
-            val fromLeftEdge = startX < 72f
-            val fromRightEdge = startX > width - 72f
-            if (!fromLeftEdge && !fromRightEdge) continue
-
-            var lastX = startX
-            var totalDx = 0f
-            var totalDy = 0f
-
-            while (change.pressed) {
-                val e = awaitPointerEvent(PointerEventPass.Main)
-                val c = e.changes.firstOrNull { it.id == change.id } ?: break
-                if (!c.pressed) break
-                val dx = c.position.x - lastX
-                lastX = c.position.x
-                totalDx += dx
-                totalDy += (c.position.y - startY)
-                c.consume()
+            if (!c.pressed) {
+                if (swiping && abs(totalDx) > 75f) {
+                    val dir = if (totalDx > 0) GestureWorldState.EdgeDirection.RIGHT
+                    else GestureWorldState.EdgeDirection.LEFT
+                    state.onEdgeSwipe(dir, onColorChanged)
+                }
+                break
             }
 
-            if (abs(totalDx) > abs(totalDy) && abs(totalDx) > 75f) {
-                val dir = if (totalDx > 0) GestureWorldState.EdgeDirection.RIGHT else GestureWorldState.EdgeDirection.LEFT
-                state.onEdgeSwipe(dir, onColorChanged)
+            if (!swiping) {
+                if (abs(totalDx) > touchSlop && abs(totalDx) > abs(totalDy) * 1.5f) {
+                    swiping = true
+                } else if (abs(totalDy) > touchSlop) {
+                    break // vertical: let the drawer swipe have it
+                }
             }
+            if (swiping) c.consume()
         }
     }
 }
