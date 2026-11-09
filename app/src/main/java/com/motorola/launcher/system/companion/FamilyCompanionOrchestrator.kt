@@ -139,7 +139,7 @@ class FamilyCompanionOrchestrator private constructor(
         consumed >= s.dailyGoalMl && s.dailyGoalMl > 0
     }.stateIn(scope, SharingStarted.Eagerly, false)
 
-    private val _activeDialogue = MutableStateFlow(getNextDialogue())
+    private val _activeDialogue = MutableStateFlow(computeNextDialogue())
     val activeDialogue: StateFlow<CompanionDialogue> = _activeDialogue.asStateFlow()
 
     init {
@@ -156,10 +156,7 @@ class FamilyCompanionOrchestrator private constructor(
         }
     }
 
-    /**
-     * Gets the next rotated Tamil dialogue based on user's character preferences (Mithra, Amma, or Both).
-     */
-    fun getNextDialogue(): CompanionDialogue {
+    private fun computeNextDialogue(): CompanionDialogue {
         val s = settings.value
         val selection = s.selectedCharacters.uppercase()
 
@@ -177,7 +174,7 @@ class FamilyCompanionOrchestrator private constructor(
         }
         lastCharacterUsed = character
 
-        val dialogue = when (character) {
+        return when (character) {
             CompanionCharacter.MITHRA -> {
                 val idx = mithraIndex.getAndIncrement() % MITHRA_REMINDERS.size
                 MITHRA_REMINDERS[idx]
@@ -191,6 +188,13 @@ class FamilyCompanionOrchestrator private constructor(
                 SHARED_REMINDERS[idx]
             }
         }
+    }
+
+    /**
+     * Gets the next rotated Tamil dialogue based on user's character preferences (Mithra, Amma, or Both).
+     */
+    fun getNextDialogue(): CompanionDialogue {
+        val dialogue = computeNextDialogue()
         _activeDialogue.value = dialogue
         return dialogue
     }
