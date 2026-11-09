@@ -1,6 +1,8 @@
 package com.motorola.launcher.ui.dialog
 
 import android.content.Intent
+import android.provider.Settings
+import android.util.Log
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -162,6 +164,66 @@ fun SettingsCustomizationDialog(
                             fontWeight = FontWeight.Bold
                         )
                     }
+                }
+
+                // Quick Action: Open Android System Settings
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 14.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(currentTheme.colors.primary.copy(alpha = 0.15f))
+                        .border(1.2.dp, currentTheme.colors.primary, RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (customization.hapticFeedback) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                }
+                                try {
+                                    val intent = Intent(Settings.ACTION_SETTINGS).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                                    }
+                                    context.startActivity(intent)
+                                    onDismiss()
+                                } catch (e: Throwable) {
+                                    Log.e("SettingsCustomization", "Failed opening system settings: ${e.message}")
+                                }
+                            }
+                        )
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(text = "⚙", fontSize = 20.sp, color = currentTheme.colors.bright)
+                        Column {
+                            Text(
+                                text = "ANDROID SYSTEM SETTINGS",
+                                color = TextPrimary,
+                                fontSize = 11.5.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.0.sp
+                            )
+                            Text(
+                                text = "Wi-Fi, Bluetooth, Apps, Display, Battery, Sound",
+                                color = TextSecondary,
+                                fontSize = 9.sp
+                            )
+                        }
+                    }
+                    Text(
+                        text = "OPEN ▶",
+                        color = currentTheme.colors.bright,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 // 0. MARVEL THEME GALLERY (Full Extensible Superhero Themes)
@@ -759,23 +821,35 @@ fun SettingsCustomizationDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val isVideoCompanion = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA ||
-                                                selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
+                                        val externalMithraVideo = remember { java.io.File("/sdcard/Download/video_mithra_lipsync.mp4") }
+                                        val externalMomVideo = remember { java.io.File("/sdcard/Download/video_mithra_mom_lipsync.mp4") }
+                                        val isMithra = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA
+                                        val isMom = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
+                                        val hasCustomVideo = if (isMithra) externalMithraVideo.exists() && externalMithraVideo.length() > 1000
+                                            else if (isMom) externalMomVideo.exists() && externalMomVideo.length() > 1000
+                                            else false
+                                        val isVideoCompanion = (isMithra || isMom) && (customization.useVideoCompanion || hasCustomVideo)
 
                                         if (isVideoCompanion) {
-                                            val rawId = if (selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA) {
-                                                R.raw.video_mithra
+                                            val customVideoFile = if (isMithra) externalMithraVideo else externalMomVideo
+                                            if (hasCustomVideo && customVideoFile.exists()) {
+                                                VideoCompanionPlayer(
+                                                    videoUri = android.net.Uri.fromFile(customVideoFile),
+                                                    cornerRadius = 8.dp,
+                                                    borderColor = themeColor.primary,
+                                                    isMuted = true,
+                                                    modifier = Modifier.size(width = 46.dp, height = 70.dp)
+                                                )
                                             } else {
-                                                R.raw.video_mithra_mom
+                                                val rawId = if (isMithra) R.raw.video_mithra else R.raw.video_mithra_mom
+                                                VideoCompanionPlayer(
+                                                    rawResId = rawId,
+                                                    cornerRadius = 8.dp,
+                                                    borderColor = themeColor.primary,
+                                                    isMuted = true,
+                                                    modifier = Modifier.size(width = 46.dp, height = 70.dp)
+                                                )
                                             }
-                                            VideoCompanionPlayer(
-                                                rawResId = rawId,
-                                                cornerRadius = 8.dp,
-                                                borderColor = themeColor.primary,
-                                                isMuted = true,
-                                                modifier = Modifier
-                                                    .size(width = 46.dp, height = 70.dp)
-                                            )
                                             Spacer(modifier = Modifier.width(10.dp))
                                         } else if (previewBmp != null) {
                                             Image(
@@ -802,6 +876,44 @@ fun SettingsCustomizationDialog(
                                                 color = TextSecondary,
                                                 fontSize = 8.sp,
                                                 fontFamily = FontFamily.SansSerif
+                                            )
+                                        }
+                                    }
+
+                                    if (isMithra || isMom) {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0x18FFFFFF))
+                                                .border(1.dp, themeColor.primary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "AI LIP-SYNC VIDEO MODE",
+                                                    color = TextPrimary,
+                                                    fontSize = 9.sp,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    text = if (customization.useVideoCompanion || hasCustomVideo) "Using video (from /sdcard/Download or bundled)" else "Using character sheet animated sprites",
+                                                    color = TextSecondary,
+                                                    fontSize = 7.5.sp
+                                                )
+                                            }
+                                            Switch(
+                                                checked = customization.useVideoCompanion || hasCustomVideo,
+                                                onCheckedChange = { preferences.setUseVideoCompanion(it) },
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = themeColor.bright,
+                                                    checkedTrackColor = themeColor.primary.copy(alpha = 0.5f)
+                                                ),
+                                                modifier = Modifier.graphicsLayer { scaleX = 0.75f; scaleY = 0.75f }
                                             )
                                         }
                                     }

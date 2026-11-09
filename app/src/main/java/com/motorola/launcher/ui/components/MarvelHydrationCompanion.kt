@@ -351,7 +351,12 @@ fun MarvelHydrationCompanion(
                 // Character Dimensions (Real Video for Mithra & Mom, 3D Hero models, Sprites for Custom Sheet)
                 val isMithra = companionStyle == CompanionStyle.MITHRA
                 val isMom = companionStyle == CompanionStyle.MITHRA_MOM
-                val isVideoCompanion = isMithra || isMom
+                val externalMithraVideo = remember { java.io.File("/sdcard/Download/video_mithra_lipsync.mp4") }
+                val externalMomVideo = remember { java.io.File("/sdcard/Download/video_mithra_mom_lipsync.mp4") }
+                val hasCustomVideo = if (isMithra) externalMithraVideo.exists() && externalMithraVideo.length() > 1000
+                    else if (isMom) externalMomVideo.exists() && externalMomVideo.length() > 1000
+                    else false
+                val isVideoCompanion = (isMithra || isMom) && (customization.useVideoCompanion || hasCustomVideo)
                 val isHulk = hero == MarvelHeroProtocol.HULK && companionStyle == CompanionStyle.HERO_SUIT
 
                 val spriteW = when {
@@ -388,15 +393,26 @@ fun MarvelHydrationCompanion(
                     // Render Character (Real Hardware-Accelerated Video for Mithra & Mom, 3D model for Heroes, Sprites for Custom Sheet)
                     val currentSprites = companionSprites
                     if (isVideoCompanion) {
-                        val rawId = if (isMithra) R.raw.video_mithra else R.raw.video_mithra_mom
                         val videoBorder = if (isMithra) Color(0xFF00E5FF) else Color(0xFFFFD54F)
-                        VideoCompanionPlayer(
-                            rawResId = rawId,
-                            cornerRadius = 16.dp,
-                            borderColor = videoBorder.copy(alpha = 0.85f),
-                            isMuted = !customization.companionVoiceEnabled,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        val customVideoFile = if (isMithra) externalMithraVideo else externalMomVideo
+                        if (hasCustomVideo && customVideoFile.exists()) {
+                            VideoCompanionPlayer(
+                                videoUri = android.net.Uri.fromFile(customVideoFile),
+                                cornerRadius = 16.dp,
+                                borderColor = videoBorder.copy(alpha = 0.85f),
+                                isMuted = !customization.companionVoiceEnabled,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            val rawId = if (isMithra) R.raw.video_mithra else R.raw.video_mithra_mom
+                            VideoCompanionPlayer(
+                                rawResId = rawId,
+                                cornerRadius = 16.dp,
+                                borderColor = videoBorder.copy(alpha = 0.85f),
+                                isMuted = !customization.companionVoiceEnabled,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     } else if (isCustomSheetCompanion && currentSprites != null) {
                         // Multi-Frame Walk Cycle & Dynamic Facial Expression Engine
                         val activeBitmap: Bitmap? = if (isWalking) {

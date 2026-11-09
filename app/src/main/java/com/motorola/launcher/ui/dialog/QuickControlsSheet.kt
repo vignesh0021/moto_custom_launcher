@@ -349,7 +349,40 @@ fun QuickControlsSheet(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Full System Settings Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(marvelTheme.colors.primary.copy(alpha = 0.15f))
+                        .border(1.dp, marvelTheme.colors.primary, RoundedCornerShape(8.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (customization.hapticFeedback) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                }
+                                onDismiss()
+                                launchSettings(context, Settings.ACTION_SETTINGS)
+                            }
+                        )
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "⚙ ALL ANDROID SYSTEM SETTINGS",
+                        color = marvelTheme.colors.bright,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Marvel Hydration Companion Action Button
                 Box(

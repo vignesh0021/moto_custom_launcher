@@ -325,6 +325,7 @@ data class CustomizationSettings(
     val autonomousContextEnabled: Boolean = false,
     val gestureWorldEnabled: Boolean = true,
     val dailyStoryMode: Boolean = true,
-    val cinematicEntranceEnabled: Boolean = true
+    val cinematicEntranceEnabled: Boolean = true,
+    val useVideoCompanion: Boolean = false
 )
 

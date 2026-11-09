@@ -75,6 +75,7 @@ fun WorkspaceScreen(
     onOpenDiagnostics: () -> Unit,
     onOpenQuickControls: () -> Unit,
     onOpenCustomization: () -> Unit,
+    onOpenSystemSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -177,6 +178,7 @@ fun WorkspaceScreen(
                         onCoreClick = onOpenDiagnostics,
                         onOpenQuickControls = onOpenQuickControls,
                         onOpenCustomization = onOpenCustomization,
+                        onOpenSystemSettings = onOpenSystemSettings,
                         size = 190.dp
                     )
                 }
@@ -249,6 +251,7 @@ fun WorkspaceScreen(
                         onCoreClick = onOpenDiagnostics,
                         onOpenQuickControls = onOpenQuickControls,
                         onOpenCustomization = onOpenCustomization,
+                        onOpenSystemSettings = onOpenSystemSettings,
                         size = 230.dp
                     )
                 }

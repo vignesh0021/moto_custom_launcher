@@ -217,6 +217,34 @@ class AppRepository(
                 }
             }
 
+            // Ensure system Settings app is always indexed even if LauncherApps filters it
+            if (appItems.none { it.packageName == "com.android.settings" }) {
+                try {
+                    val settingsIntent = Intent(Settings.ACTION_SETTINGS)
+                    val resolveInfo = context.packageManager.resolveActivity(settingsIntent, 0)
+                    if (resolveInfo != null) {
+                        val pkgName = resolveInfo.activityInfo.packageName
+                        val clsName = resolveInfo.activityInfo.name
+                        val label = resolveInfo.loadLabel(context.packageManager)?.toString() ?: "Settings"
+                        val icon = try { resolveInfo.loadIcon(context.packageManager) } catch (_: Throwable) { null }
+                        val bitmap = if (icon != null) iconManager.rasterizeDrawable(icon) else null
+                        appItems.add(
+                            AppItem(
+                                componentKey = "$pkgName/$clsName#0",
+                                packageName = pkgName,
+                                activityName = clsName,
+                                label = label,
+                                userHandle = Process.myUserHandle(),
+                                iconCacheKey = "icon_system_settings",
+                                iconBitmap = bitmap
+                            )
+                        )
+                    }
+                } catch (e: Throwable) {
+                    Log.w(TAG, "Failed resolving system settings fallback: ${e.message}")
+                }
+            }
+
             // Sort alphabetically NOCASE
             appItems.sortBy { it.label.lowercase() }
             _appsState.value = appItems.toImmutableList()
@@ -294,9 +322,31 @@ class AppRepository(
     }
 
     /**
-     * Launches selected application with low-latency system binder handoff.
+     * Launches selected application with robust 4-tier fallback pipeline:
+     * 1. Direct Settings Action fast-path if opening system settings
+     * 2. LauncherApps binder handoff (preserves multi-profile/work profile sandbox)
+     * 3. PackageManager launch intent (with NEW_TASK flag)
+     * 4. Explicit component intent
+     * 5. Action/Settings heuristic fallback
      */
     fun launchApp(item: AppItem, sourceBounds: Rect? = null) {
+        // Direct Fast-Path for System Settings
+        if (item.packageName == "com.android.settings" || item.packageName == "com.motorola.launcher.settings") {
+            try {
+                val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                    if (sourceBounds != null) {
+                        this.sourceBounds = sourceBounds
+                    }
+                }
+                context.startActivity(settingsIntent)
+                return
+            } catch (e: Throwable) {
+                Log.w(TAG, "Direct Settings.ACTION_SETTINGS failed: ${e.message}")
+            }
+        }
+
+        // Tier 1: LauncherApps binder handoff (preserves multi-profile / work profile sandbox)
         try {
             val opts = if (sourceBounds != null) {
                 val b = Bundle()
@@ -304,14 +354,60 @@ class AppRepository(
                 b
             } else null
 
+            val user = item.userHandle ?: Process.myUserHandle()
             launcherApps?.startMainActivity(
                 item.componentName,
-                item.userHandle ?: Process.myUserHandle(),
+                user,
                 sourceBounds,
                 opts
             )
+            return
         } catch (t: Throwable) {
-            Log.e(TAG, "Failed launching ${item.componentKey}: ${t.message}")
+            Log.w(TAG, "LauncherApps.startMainActivity failed for ${item.componentKey}: ${t.message}. Trying PackageManager fallback.")
+        }
+
+        // Tier 2: PackageManager launch intent
+        try {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(item.packageName)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                if (sourceBounds != null) {
+                    launchIntent.sourceBounds = sourceBounds
+                }
+                context.startActivity(launchIntent)
+                return
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "PackageManager.getLaunchIntentForPackage failed: ${t.message}. Trying explicit component intent.")
+        }
+
+        // Tier 3: Explicit Component Intent
+        try {
+            val explicitIntent = Intent(Intent.ACTION_MAIN).apply {
+                component = item.componentName
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                if (sourceBounds != null) {
+                    this.sourceBounds = sourceBounds
+                }
+            }
+            context.startActivity(explicitIntent)
+            return
+        } catch (t: Throwable) {
+            Log.w(TAG, "Explicit component intent failed: ${t.message}. Trying fallback action.")
+        }
+
+        // Tier 4: Settings or generic system fallback
+        try {
+            if (item.packageName.contains("setting", ignoreCase = true) || item.label.contains("setting", ignoreCase = true)) {
+                val intent = Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                return
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "All launch tiers failed for ${item.componentKey}: ${t.message}")
         }
     }
 

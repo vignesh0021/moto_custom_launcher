@@ -314,6 +314,14 @@ fun LauncherRoot(
                 onOpenDiagnostics = { showJarvisDashboard = true },
                 onOpenQuickControls = { showQuickControls = true },
                 onOpenCustomization = { showCustomization = true },
+                onOpenSystemSettings = {
+                    try {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                        }
+                        context.startActivity(intent)
+                    } catch (_: Throwable) {}
+                },
                 modifier = workspaceGestureModifier
             )
 

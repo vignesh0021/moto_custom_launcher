@@ -10,9 +10,11 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,6 +95,7 @@ fun ReactorCore(
     onCoreClick: () -> Unit,
     onOpenQuickControls: () -> Unit,
     onOpenCustomization: () -> Unit,
+    onOpenSystemSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
     size: Dp = 230.dp
 ) {
@@ -305,6 +308,10 @@ fun ReactorCore(
                 onClick = {
                     tapFeedback()
                     onOpenCustomization()
+                },
+                onLongClick = {
+                    tapFeedback()
+                    onOpenSystemSettings()
                 }
             )
         }
@@ -314,12 +321,14 @@ fun ReactorCore(
 /**
  * Compact pill button directly anchored to the Reactor Core.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CoreAttachedPill(
     icon: String,
     label: String,
     color: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val pillShape = RoundedCornerShape(16.dp)
     Row(
@@ -327,10 +336,11 @@ private fun CoreAttachedPill(
             .clip(pillShape)
             .background(Color(0xCC050A14))
             .border(1.dp, color.copy(alpha = 0.5f), pillShape)
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
+                onLongClick = onLongClick
             )
             .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

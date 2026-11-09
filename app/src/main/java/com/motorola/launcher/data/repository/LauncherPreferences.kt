@@ -71,7 +71,8 @@ class LauncherPreferences(context: Context) {
             autonomousContextEnabled = prefs.getBoolean(KEY_AUTONOMOUS_CONTEXT, false),
             gestureWorldEnabled = prefs.getBoolean(KEY_GESTURE_WORLD, true),
             dailyStoryMode = prefs.getBoolean(KEY_DAILY_STORY, true),
-            cinematicEntranceEnabled = prefs.getBoolean(KEY_CINEMATIC_ENTRANCE, true)
+            cinematicEntranceEnabled = prefs.getBoolean(KEY_CINEMATIC_ENTRANCE, true),
+            useVideoCompanion = prefs.getBoolean(KEY_USE_VIDEO_COMPANION, false)
         )
     }
 
@@ -310,6 +311,11 @@ class LauncherPreferences(context: Context) {
         _customization.value = _customization.value.copy(soundEffectsEnabled = enabled)
     }
 
+    fun setUseVideoCompanion(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_USE_VIDEO_COMPANION, enabled).apply()
+        _customization.value = _customization.value.copy(useVideoCompanion = enabled)
+    }
+
     companion object {
         private const val KEY_THEME_ID = "theme_id"
         private const val KEY_SOUND_EFFECTS = "sound_effects_enabled"
@@ -345,5 +351,6 @@ class LauncherPreferences(context: Context) {
         private const val KEY_GESTURE_WORLD = "gesture_world_enabled"
         private const val KEY_DAILY_STORY = "daily_story_mode"
         private const val KEY_CINEMATIC_ENTRANCE = "cinematic_entrance_enabled"
+        private const val KEY_USE_VIDEO_COMPANION = "use_video_companion"
     }
 }
