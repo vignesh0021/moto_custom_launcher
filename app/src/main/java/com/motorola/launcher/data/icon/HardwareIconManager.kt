@@ -142,4 +142,11 @@ class HardwareIconManager(
         memoryCache.evictAll()
         diskCache.evictAll()
     }
+
+    /**
+     * Synchronously rasterizes a drawable to ImageBitmap using the underlying AdaptiveIconRasterizer.
+     */
+    fun rasterizeDrawable(drawable: Drawable): ImageBitmap? {
+        return rasterizer.rasterize(drawable)?.asImageBitmap()
+    }
 }

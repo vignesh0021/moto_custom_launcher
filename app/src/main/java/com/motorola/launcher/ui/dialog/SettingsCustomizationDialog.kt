@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
@@ -817,19 +818,19 @@ fun SettingsCustomizationDialog(
                                     .padding(10.dp)
                             ) {
                                 Column {
+                                    val externalMithraVideo = remember { java.io.File("/sdcard/Download/video_mithra_lipsync.mp4") }
+                                    val externalMomVideo = remember { java.io.File("/sdcard/Download/video_mithra_mom_lipsync.mp4") }
+                                    val isMithra = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA
+                                    val isMom = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
+                                    val hasCustomVideo = if (isMithra) externalMithraVideo.exists() && externalMithraVideo.length() > 1000
+                                        else if (isMom) externalMomVideo.exists() && externalMomVideo.length() > 1000
+                                        else false
+                                    val isVideoCompanion = (isMithra || isMom) && (customization.useVideoCompanion || hasCustomVideo)
+
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val externalMithraVideo = remember { java.io.File("/sdcard/Download/video_mithra_lipsync.mp4") }
-                                        val externalMomVideo = remember { java.io.File("/sdcard/Download/video_mithra_mom_lipsync.mp4") }
-                                        val isMithra = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA
-                                        val isMom = selectedStyle == com.motorola.launcher.ui.model.CompanionStyle.MITHRA_MOM
-                                        val hasCustomVideo = if (isMithra) externalMithraVideo.exists() && externalMithraVideo.length() > 1000
-                                            else if (isMom) externalMomVideo.exists() && externalMomVideo.length() > 1000
-                                            else false
-                                        val isVideoCompanion = (isMithra || isMom) && (customization.useVideoCompanion || hasCustomVideo)
-
                                         if (isVideoCompanion) {
                                             val customVideoFile = if (isMithra) externalMithraVideo else externalMomVideo
                                             if (hasCustomVideo && customVideoFile.exists()) {
