@@ -107,146 +107,99 @@ fun DigitalClock(
     }
 
     val primaryColor = marvelTheme.colors.primary
-    val glowColor = marvelTheme.colors.glow
     val brightColor = marvelTheme.colors.bright
-    val borderColor = marvelTheme.colors.hudBorder
 
-    val panelShape = chamferedShape(cutSize = 14f)
-
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 16.dp, vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Supreme Clean Cybernetic Glass Card (No unwanted reticle lines or progress lines)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .clip(panelShape)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xCC081220),
-                            Color(0xDD040914)
+        // 1. Sleek Floating Date Line (Frameless, zero wallpaper obstruction)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "$dayOfWeek  •  $dayMonth $yearText",
+                color = Color.White.copy(alpha = 0.92f),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.8.sp,
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color(0xE6000000),
+                        offset = Offset(0f, 1.5f),
+                        blurRadius = 8f
+                    )
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // 2. Compact Frameless Holographic Digital Numerals
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            val digitsStyle = TextStyle(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 40.sp,
+                letterSpacing = (-1.0).sp,
+                platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                shadow = Shadow(
+                    color = Color(0xE6000000),
+                    offset = Offset(0f, 2f),
+                    blurRadius = 12f
+                )
+            )
+
+            // Hours
+            Text(
+                text = hoursText,
+                color = Color.White,
+                style = digitsStyle
+            )
+
+            // Breathing Pulsing Neon Colon
+            Text(
+                text = ":",
+                color = primaryColor.copy(alpha = colonAlpha.value),
+                style = digitsStyle.copy(
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.sp
+                ),
+                modifier = Modifier.padding(horizontal = 2.dp)
+            )
+
+            // Minutes
+            Text(
+                text = minsText,
+                color = Color.White,
+                style = digitsStyle
+            )
+
+            if (amPmText.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = amPmText,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = brightColor,
+                    letterSpacing = 1.sp,
+                    style = TextStyle(
+                        shadow = Shadow(
+                            color = Color(0xE6000000),
+                            offset = Offset(0f, 1.5f),
+                            blurRadius = 6f
                         )
                     )
                 )
-                .border(1.dp, borderColor.copy(alpha = 0.5f), panelShape)
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // 1. Futuristic Date Header Bar
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    // Day of Week Chip
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(primaryColor.copy(alpha = 0.18f))
-                            .border(0.8.dp, primaryColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = dayOfWeek,
-                            color = brightColor,
-                            fontSize = 9.5.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = "•",
-                        color = primaryColor.copy(alpha = 0.6f),
-                        fontSize = 10.sp
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = "$dayMonth  //  $yearText",
-                        color = TextSecondary,
-                        fontSize = 11.5.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 2.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // 2. Supreme Digital Numerals Display
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    val digitsStyle = TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 56.sp,
-                        letterSpacing = (-1.5).sp,
-                        shadow = Shadow(
-                            color = glowColor.copy(alpha = 0.9f),
-                            offset = Offset(0f, 0f),
-                            blurRadius = 24f
-                        )
-                    )
-
-                    // Hours
-                    Text(
-                        text = hoursText,
-                        color = Color.White,
-                        style = digitsStyle
-                    )
-
-                    // Breathing Pulsing Neon Colon
-                    Text(
-                        text = ":",
-                        color = primaryColor.copy(alpha = colonAlpha.value),
-                        style = digitsStyle.copy(
-                            fontSize = 50.sp,
-                            fontWeight = FontWeight.Light,
-                            letterSpacing = 0.sp
-                        ),
-                        modifier = Modifier.padding(start = 3.dp, end = 3.dp, bottom = 4.dp)
-                    )
-
-                    // Minutes
-                    Text(
-                        text = minsText,
-                        color = Color.White,
-                        style = digitsStyle
-                    )
-
-                    if (amPmText.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(primaryColor.copy(alpha = 0.15f))
-                                .border(0.8.dp, primaryColor.copy(alpha = 0.45f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = amPmText,
-                                fontSize = 11.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = primaryColor,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
-                }
             }
         }
     }

@@ -80,6 +80,19 @@ class MainActivity : ComponentActivity() {
             telemetryManager = it
         }
 
+        // 6. Initialize Hydration Notification Channel & Background Alarm Orchestrator (Works even when locked)
+        try {
+            com.motorola.launcher.system.hydration.HydrationNotificationHelper.createNotificationChannel(applicationContext)
+            com.motorola.launcher.system.companion.FamilyCompanionOrchestrator.getInstance(applicationContext)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 9001)
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Hydration notification init failed: ${e.message}")
+        }
+
         if (intent.getBooleanExtra(EXTRA_OPEN_HYDRATION_DASHBOARD, false)) {
             hydrationDashboardEvents.tryEmit(Unit)
         }

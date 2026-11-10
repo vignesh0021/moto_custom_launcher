@@ -125,9 +125,13 @@ class SystemTelemetryManager(private val context: Context) {
     }
 
     init {
-        // Register sticky battery broadcast
+        // Register sticky battery broadcast + immediate power connect/disconnect events
         try {
-            val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_BATTERY_CHANGED)
+                addAction(Intent.ACTION_POWER_CONNECTED)
+                addAction(Intent.ACTION_POWER_DISCONNECTED)
+            }
             val initialIntent = context.registerReceiver(batteryReceiver, filter)
             isReceiverRegistered = true
             if (initialIntent != null) {
@@ -163,15 +167,30 @@ class SystemTelemetryManager(private val context: Context) {
     }
 
     private fun updateBatteryFromIntent(intent: Intent) {
+        when (intent.action) {
+            Intent.ACTION_POWER_DISCONNECTED -> {
+                _telemetryState.update { it.copy(isCharging = false) }
+                return
+            }
+            Intent.ACTION_POWER_CONNECTED -> {
+                _telemetryState.update { it.copy(isCharging = true) }
+                return
+            }
+        }
+
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
         val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
         val tempRaw = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1)
         val voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)
         val healthRaw = intent.getIntExtra(BatteryManager.EXTRA_HEALTH, -1)
 
         val pct = if (level >= 0 && scale > 0) (level * 100) / scale else -1
-        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        val charging = plugged != 0 && (
+            status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL
+        )
         val tempC = if (tempRaw != -1) tempRaw / 10.0f else Float.NaN
         val healthStr = when (healthRaw) {
             BatteryManager.BATTERY_HEALTH_OVERHEAT -> "Overheat"

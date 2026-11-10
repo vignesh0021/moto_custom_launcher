@@ -149,6 +149,7 @@ fun LauncherRoot(
     val todayIntakeMl by orchestrator.todayTotalMl.collectAsState()
     val progressRatio by orchestrator.progressRatio.collectAsState()
     val hydrationSettings by orchestrator.settings.collectAsState()
+    val pendingCompanionPrompt by orchestrator.pendingCompanionPrompt.collectAsState()
 
     LaunchedEffect(hydrationDashboardEvents) {
         hydrationDashboardEvents?.collect {
@@ -156,13 +157,33 @@ fun LauncherRoot(
         }
     }
 
-    // Marvel Hydration Companion check with user-configurable interval
-    LaunchedEffect(customization.hydrationReminderEnabled, customization.hydrationIntervalMinutes) {
-        if (!customization.hydrationReminderEnabled) return@LaunchedEffect
+    LaunchedEffect(pendingCompanionPrompt) {
+        if (pendingCompanionPrompt) {
+            showHydrationReminder = true
+            orchestrator.consumeCompanionPrompt()
+        }
+    }
+
+    // Marvel Hydration Companion check with user-configurable interval (works both locked & unlocked)
+    LaunchedEffect(customization.hydrationReminderEnabled, customization.hydrationIntervalMinutes, hydrationSettings.enabled) {
+        if (!customization.hydrationReminderEnabled && !hydrationSettings.enabled) return@LaunchedEffect
         while (true) {
             val now = System.currentTimeMillis()
-            val intervalMillis = customization.hydrationIntervalMinutes.coerceAtLeast(1) * 60 * 1000L
-            if (now - customization.lastHydrationHour >= intervalMillis) {
+            val intervalMin = if (hydrationSettings.enabled) hydrationSettings.reminderIntervalMinutes else customization.hydrationIntervalMinutes
+            val intervalMillis = intervalMin.coerceAtLeast(1) * 60 * 1000L
+            if (!showHydrationReminder && now - customization.lastHydrationHour >= intervalMillis) {
+                val keyguard = context.getSystemService(android.content.Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
+                val isLocked = keyguard?.isKeyguardLocked == true
+                if (isLocked) {
+                    // Phone is locked: post high-priority lock-screen public notification immediately
+                    val dialogue = orchestrator.getNextDialogue()
+                    com.motorola.launcher.system.hydration.HydrationNotificationHelper.showReminderNotification(
+                        context = context,
+                        dialogue = dialogue,
+                        consumedMl = todayIntakeMl,
+                        targetMl = hydrationSettings.dailyGoalMl
+                    )
+                }
                 showHydrationReminder = true
             }
             delay(30000L) // Lightweight 30-second ticker, zero battery drain

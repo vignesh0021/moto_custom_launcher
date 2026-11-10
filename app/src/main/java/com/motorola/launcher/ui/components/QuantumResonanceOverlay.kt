@@ -55,40 +55,40 @@ fun QuantumResonanceOverlay(
 }
 
 private fun DrawScope.drawQuantumField(hero: MarvelHeroProtocol, phase: Float) {
-    val center = Offset(size.width / 2f, size.height * 0.42f)
-    val radius = size.minDimension * 0.28f
+    val center = Offset(size.width / 2f, size.height / 2f)
+    val radius = size.minDimension * 0.34f
     val color = hero.primary
     val glow = hero.glow
 
-    // Outer resonance rings
-    for (i in 0..3) {
-        val r = radius * (1.1f + i * 0.18f + phase * 0.12f)
+    // Outer resonance rings (strictly concentric with ReactorCore)
+    for (i in 0..2) {
+        val r = radius * (1.05f + i * 0.14f + phase * 0.10f)
         drawCircle(
-            color = color.copy(alpha = 0.18f - i * 0.04f),
+            color = color.copy(alpha = 0.22f - i * 0.06f),
             radius = r,
             center = center,
             style = Stroke(width = 1.5f)
         )
     }
 
-    // Hero-specific particle burst
-    val particleCount = 24
+    // Hero-specific circular particle orbit when charging
+    val particleCount = 20
     for (i in 0 until particleCount) {
         val angle = (i / particleCount.toFloat()) * 2f * PI.toFloat() + phase * 2f * PI.toFloat()
-        val dist = radius * (0.65f + (sin(phase * 4f + i) * 0.15f))
+        val dist = radius * (0.95f + (sin(phase * 4f + i) * 0.08f))
         val px = center.x + cos(angle) * dist
-        val py = center.y + sin(angle) * dist * 0.7f
+        val py = center.y + sin(angle) * dist
         drawCircle(
-            color = glow.copy(alpha = 0.55f),
-            radius = 2.2f,
+            color = glow.copy(alpha = 0.65f),
+            radius = 2.0f,
             center = Offset(px, py)
         )
     }
 
     // Core pulse
     drawCircle(
-        color = color.copy(alpha = 0.25f + phase * 0.15f),
-        radius = radius * 0.35f,
+        color = color.copy(alpha = 0.20f + phase * 0.12f),
+        radius = radius * 0.32f,
         center = center
     )
 }

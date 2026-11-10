@@ -169,17 +169,13 @@ fun WorkspaceScreen(
 
                 // Center Column: Core
                 Box(contentAlignment = Alignment.Center) {
-                    QuantumResonanceOverlay(
-                        isActive = telemetry.isCharging || telemetry.batteryLevel > 80,
-                        modifier = Modifier.size(240.dp)
-                    )
                     ReactorCore(
                         telemetry = telemetry,
                         onCoreClick = onOpenDiagnostics,
                         onOpenQuickControls = onOpenQuickControls,
                         onOpenCustomization = onOpenCustomization,
                         onOpenSystemSettings = onOpenSystemSettings,
-                        size = 190.dp
+                        size = 148.dp
                     )
                 }
 
@@ -234,25 +230,21 @@ fun WorkspaceScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // TOP: Clock
+                // TOP: Frameless Minimalist HUD Clock (does not block wallpaper)
                 DigitalClock(
                     telemetry = telemetry,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 4.dp)
                 )
 
-                // CENTRE: All-In-One Marvel Command Core + Quantum Resonance
+                // CENTRE: Compact All-In-One Marvel Command Core
                 Box(contentAlignment = Alignment.Center) {
-                    QuantumResonanceOverlay(
-                        isActive = telemetry.isCharging || telemetry.batteryLevel > 80,
-                        modifier = Modifier.size(320.dp)
-                    )
                     ReactorCore(
                         telemetry = telemetry,
                         onCoreClick = onOpenDiagnostics,
                         onOpenQuickControls = onOpenQuickControls,
                         onOpenCustomization = onOpenCustomization,
                         onOpenSystemSettings = onOpenSystemSettings,
-                        size = 230.dp
+                        size = 168.dp
                     )
                 }
 

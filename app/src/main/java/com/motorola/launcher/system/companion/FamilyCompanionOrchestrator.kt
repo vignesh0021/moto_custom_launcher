@@ -142,6 +142,17 @@ class FamilyCompanionOrchestrator private constructor(
     private val _activeDialogue = MutableStateFlow(computeNextDialogue())
     val activeDialogue: StateFlow<CompanionDialogue> = _activeDialogue.asStateFlow()
 
+    private val _pendingCompanionPrompt = MutableStateFlow(false)
+    val pendingCompanionPrompt: StateFlow<Boolean> = _pendingCompanionPrompt.asStateFlow()
+
+    fun triggerCompanionPrompt() {
+        _pendingCompanionPrompt.value = true
+    }
+
+    fun consumeCompanionPrompt() {
+        _pendingCompanionPrompt.value = false
+    }
+
     init {
         // Automatically schedule or sync next alarm whenever settings change
         scope.launch {

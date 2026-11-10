@@ -118,19 +118,11 @@ fun StarkWallpaperLayer(
 private fun DrawScope.drawReadabilityScrim() {
     drawRect(
         Brush.verticalGradient(
-            0.00f to Color(0xB3000000),
-            0.25f to Color(0x4D000000),
-            0.55f to Color(0x33000000),
-            0.78f to Color(0x80000000),
-            1.00f to Color(0xD9000000)
+            0.00f to Color(0x4D000000),
+            0.16f to Color(0x0D000000),
+            0.78f to Color(0x0D000000),
+            1.00f to Color(0x73000000)
         )
-    )
-    val c = Offset(size.width / 2f, size.height * 0.47f)
-    val r = size.width * 0.6f
-    drawCircle(
-        brush = Brush.radialGradient(listOf(Color(0x8C000000), Color.Transparent), center = c, radius = r),
-        radius = r,
-        center = c
     )
 }
 

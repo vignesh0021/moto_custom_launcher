@@ -71,24 +71,8 @@ class HydrationReminderScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    targetTimestamp,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    targetTimestamp,
-                    pendingIntent
-                )
-            }
-            Log.i(TAG, "Next reminder scheduled successfully for timestamp: $targetTimestamp")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed scheduling alarm: ${e.message}", e)
-        }
+        scheduleRtcWakeupAlarm(targetTimestamp, pendingIntent)
+        Log.i(TAG, "Next reminder scheduled successfully for timestamp: $targetTimestamp")
     }
 
     /**
@@ -109,23 +93,40 @@ class HydrationReminderScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        scheduleRtcWakeupAlarm(targetTimestamp, pendingIntent)
+        Log.i(TAG, "Snooze alarm scheduled for timestamp: $targetTimestamp")
+    }
+
+    private fun scheduleRtcWakeupAlarm(targetTimestamp: Long, pendingIntent: PendingIntent) {
+        val am = alarmManager ?: return
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    targetTimestamp,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    targetTimestamp,
-                    pendingIntent
-                )
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                    if (am.canScheduleExactAlarms()) {
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, targetTimestamp, pendingIntent)
+                    } else {
+                        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, targetTimestamp, pendingIntent)
+                    }
+                }
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, targetTimestamp, pendingIntent)
+                }
+                else -> {
+                    am.setExact(AlarmManager.RTC_WAKEUP, targetTimestamp, pendingIntent)
+                }
             }
-            Log.i(TAG, "Snooze alarm scheduled for timestamp: $targetTimestamp")
+        } catch (e: SecurityException) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, targetTimestamp, pendingIntent)
+                } else {
+                    am.set(AlarmManager.RTC_WAKEUP, targetTimestamp, pendingIntent)
+                }
+            } catch (inner: Exception) {
+                Log.e(TAG, "Fallback alarm failed: ${inner.message}", inner)
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed scheduling snooze alarm: ${e.message}", e)
+            Log.e(TAG, "Failed scheduling alarm: ${e.message}", e)
         }
     }
 

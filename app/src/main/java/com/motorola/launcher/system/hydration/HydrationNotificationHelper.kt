@@ -18,8 +18,8 @@ import java.util.UUID
  */
 object HydrationNotificationHelper {
 
-    const val CHANNEL_ID = "v2h_hydration_reminders"
-    const val CHANNEL_NAME = "Smart Water Reminders"
+    const val CHANNEL_ID = "v2h_hydration_reminders_v2"
+    const val CHANNEL_NAME = "Smart Water Reminders (Lock Screen)"
     const val NOTIFICATION_ID = 8801
 
     fun createNotificationChannel(context: Context) {
@@ -29,10 +29,11 @@ object HydrationNotificationHelper {
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Daily hydration notifications from Mithra and Amma"
+                description = "Daily hydration notifications from Mithra and Amma (works on lock screen)"
                 enableLights(true)
                 enableVibration(true)
                 setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             notificationManager?.createNotificationChannel(channel)
@@ -124,8 +125,12 @@ object HydrationNotificationHelper {
                 NotificationCompat.BigTextStyle()
                     .bigText("${dialogue.tamilText}\n\n$progressText")
             )
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(contentPendingIntent)
+            .setFullScreenIntent(contentPendingIntent, true)
             .setAutoCancel(true)
             // 4 Required Actions
             .addAction(0, "200 ml குடிச்சேன் ✓", drink200PendingIntent)

@@ -97,7 +97,7 @@ fun ReactorCore(
     onOpenCustomization: () -> Unit,
     onOpenSystemSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
-    size: Dp = 230.dp
+    size: Dp = 168.dp
 ) {
     val view = LocalView.current
     val customization = LocalCustomization.current
@@ -146,7 +146,7 @@ fun ReactorCore(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Main Core Display
+        // Main Circular Core Display (Strictly square Box so center = exact geometric center of all rings & text)
         Box(
             modifier = Modifier
                 .size(size)
@@ -164,7 +164,13 @@ fun ReactorCore(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Canvas(modifier = Modifier.size(size)) {
+            // Charging resonance overlay is strictly coaxial with the circular core (active ONLY while charging)
+            com.motorola.launcher.ui.components.QuantumResonanceOverlay(
+                isActive = isCharging,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            Canvas(modifier = Modifier.fillMaxSize()) {
                 val center = Offset(this.size.width / 2f, this.size.height / 2f)
                 val radius = this.size.minDimension / 2f
                 val burst = touchBurst.value
@@ -173,7 +179,7 @@ fun ReactorCore(
                 drawOuterTicks(center, radius * 0.96f, secondaryColor)
 
                 // 2. Dual Telemetry Orbital Arcs (Left = Battery, Right = RAM)
-                // Battery Arc (Left half: 90° to 270°)
+                // Battery Arc (Left half: 100° to 260°)
                 drawBatteryGaugeArc(
                     center = center,
                     radius = radius * 0.86f,
@@ -183,7 +189,7 @@ fun ReactorCore(
                     burst = burst
                 )
 
-                // RAM Arc (Right half: 270° to 90°)
+                // RAM Arc (Right half: 280° to 80°)
                 drawRamGaugeArc(
                     center = center,
                     radius = radius * 0.86f,
@@ -199,7 +205,7 @@ fun ReactorCore(
                     center = center,
                     style = Stroke(
                         width = 1.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 10f), 0f)
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 9f), 0f)
                     )
                 )
 
@@ -216,75 +222,53 @@ fun ReactorCore(
                     CoreGeometry.AVENGERS_CHEVRON -> drawAvengersChevronGeometry(center, radius, primaryColor, secondaryColor, burst)
                 }
 
-                // 5. Central Radiant Core Backing
+                // 5. Central Radiant Core Backing + Precision Center Medallion for 100% Centered Percentage on Every Logo
                 val effectivePulse = if (isCharging) chargingPulse else 0.85f
-                val glowAlpha = ((0.32f * effectivePulse) + (burst * 0.4f)).coerceIn(0f, 1f)
+                val glowAlpha = ((0.28f * effectivePulse) + (burst * 0.35f)).coerceIn(0f, 1f)
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
                             coreColor.copy(alpha = glowAlpha),
-                            glowColor.copy(alpha = glowAlpha * 0.4f),
+                            glowColor.copy(alpha = glowAlpha * 0.35f),
                             Color.Transparent
                         ),
                         center = center,
-                        radius = radius * 0.38f
+                        radius = radius * 0.36f
                     ),
-                    radius = radius * 0.38f,
+                    radius = radius * 0.36f,
                     center = center
+                )
+
+                // Subtle centered dark glass medallion & precision ring so percentage is dead-center on every hero logo
+                drawCircle(
+                    color = Color(0x99040812),
+                    radius = radius * 0.24f,
+                    center = center
+                )
+                drawCircle(
+                    color = coreColor.copy(alpha = 0.65f),
+                    radius = radius * 0.24f,
+                    center = center,
+                    style = Stroke(width = 1.2.dp.toPx())
                 )
             }
 
-            // Central Battery Percentage — Centered dead-center in the Marvel core geometry & arcs
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        if (telemetry.isCharging) {
-                            Text(
-                                text = "⚡",
-                                color = StarkEmerald,
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(end = 2.dp)
-                            )
-                        }
-                        Text(
-                            text = if (telemetry.batteryLevel >= 0) "${telemetry.batteryLevel}%" else "--%",
-                            color = TextPrimary,
-                            fontSize = 26.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.5).sp,
-                            style = TextStyle(
-                                shadow = Shadow(color = Color.Black, offset = Offset(0f, 2f), blurRadius = 8f)
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = if (telemetry.isCharging) "CHARGING" else "BATTERY",
-                        color = if (telemetry.isCharging) StarkEmerald else coreColor.copy(alpha = 0.85f),
-                        fontSize = 7.5.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                        style = TextStyle(
-                            shadow = Shadow(color = Color.Black, offset = Offset(0f, 1f), blurRadius = 4f)
-                        )
-                    )
-                }
-            }
+            // Central Battery Percentage ONLY — Dead-center horizontally and vertically for every logo
+            Text(
+                text = if (telemetry.batteryLevel >= 0) "${telemetry.batteryLevel}%" else "--%",
+                color = if (telemetry.isCharging) StarkEmerald else TextPrimary,
+                fontSize = 17.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-0.5).sp,
+                style = TextStyle(
+                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                    shadow = Shadow(color = Color.Black, offset = Offset(0f, 1.5f), blurRadius = 6f)
+                )
+            )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // Attached Core Wing Buttons: [ CONTROLS ] & [ SETTINGS ]
         // Keeping controls inside/attached to the core so wallpaper is completely unblocked.
@@ -330,30 +314,30 @@ private fun CoreAttachedPill(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
-    val pillShape = RoundedCornerShape(16.dp)
+    val pillShape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
             .clip(pillShape)
-            .background(Color(0xCC050A14))
-            .border(1.dp, color.copy(alpha = 0.5f), pillShape)
+            .background(Color(0xB3050A14))
+            .border(0.8.dp, color.copy(alpha = 0.5f), pillShape)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 11.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Text(text = icon, fontSize = 10.sp, color = color)
+        Text(text = icon, fontSize = 9.sp, color = color)
         Text(
             text = label,
             color = TextPrimary,
-            fontSize = 9.5.sp,
+            fontSize = 8.5.sp,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp
+            letterSpacing = 1.sp
         )
     }
 }
@@ -370,7 +354,7 @@ private fun DrawScope.drawBatteryGaugeArc(
     glowColor: Color,
     burst: Float
 ) {
-    val strokeWidth = 3.5.dp.toPx()
+    val strokeWidth = 3.2.dp.toPx()
     val arcSpan = 160f // Spans from 100° to 260° (Left side)
     val startAngle = 100f
     val fillSpan = (batteryPercent.coerceIn(0, 100) / 100f) * arcSpan
@@ -416,7 +400,7 @@ private fun DrawScope.drawRamGaugeArc(
     color: Color,
     glowColor: Color
 ) {
-    val strokeWidth = 3.5.dp.toPx()
+    val strokeWidth = 3.2.dp.toPx()
     val arcSpan = 160f // Spans from 280° to 80° (Right side)
     val startAngle = 280f
     val fillSpan = (ramPercent.coerceIn(0, 100) / 100f) * arcSpan
@@ -450,7 +434,7 @@ private fun DrawScope.drawRamGaugeArc(
 // PROCEDURAL MARVEL GEOMETRIES
 // -------------------------------------------------------------------------------------------------
 
-/** Iron Man: Arc Reactor magnetic coils + central inverted triangle (▼) */
+/** Iron Man: Arc Reactor magnetic coils + central inverted triangle framing the center medallion */
 private fun DrawScope.drawArcReactorGeometry(
     center: Offset,
     radius: Float,
@@ -473,12 +457,12 @@ private fun DrawScope.drawArcReactorGeometry(
             useCenter = false,
             topLeft = Offset(center.x - coilRadius, center.y - coilRadius),
             size = Size(coilRadius * 2f, coilRadius * 2f),
-            style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Butt)
+            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Butt)
         )
     }
 
-    // Central inverted triangle
-    val triRadius = radius * 0.28f + (burst * 4f)
+    // Central inverted triangle tangent-framing the 0.24f percentage medallion (inradius = 0.5 * triRadius = 0.25f)
+    val triRadius = radius * 0.50f + (burst * 4f)
     val p1 = Offset(center.x, center.y + triRadius)
     val p2 = Offset(center.x + triRadius * cos((210.0 * PI / 180.0).toFloat()), center.y + triRadius * sin((210.0 * PI / 180.0).toFloat()))
     val p3 = Offset(center.x + triRadius * cos((330.0 * PI / 180.0).toFloat()), center.y + triRadius * sin((330.0 * PI / 180.0).toFloat()))
@@ -486,8 +470,8 @@ private fun DrawScope.drawArcReactorGeometry(
     val path = Path().apply {
         moveTo(p1.x, p1.y); lineTo(p2.x, p2.y); lineTo(p3.x, p3.y); close()
     }
-    drawPath(path, color = glowColor, style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round))
-    drawPath(path, color = color, style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(path, color = glowColor, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(path, color = color, style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round))
 }
 
 /** Black Panther: Vibranium kinetic chevron teeth ring + tribal diamond core */
@@ -518,10 +502,10 @@ private fun DrawScope.drawVibraniumWeaveGeometry(
     }
     toothPath.close()
 
-    drawPath(toothPath, color = primary.copy(alpha = 0.8f), style = Stroke(width = 1.8.dp.toPx()))
+    drawPath(toothPath, color = primary.copy(alpha = 0.8f), style = Stroke(width = 1.6.dp.toPx()))
 
-    // Diamond reticle
-    val dR = radius * 0.28f + (burst * 3f)
+    // Diamond reticle symmetrically framing the center medallion (inradius = 0.36 / sqrt(2) = 0.254f)
+    val dR = radius * 0.36f + (burst * 3f)
     val dPath = Path().apply {
         moveTo(center.x, center.y - dR)
         lineTo(center.x + dR, center.y)
@@ -529,7 +513,7 @@ private fun DrawScope.drawVibraniumWeaveGeometry(
         lineTo(center.x - dR, center.y)
         close()
     }
-    drawPath(dPath, color = secondary, style = Stroke(width = 2.dp.toPx()))
+    drawPath(dPath, color = secondary, style = Stroke(width = 1.8.dp.toPx()))
 }
 
 /** Captain America: Vibranium concentric shield rings + 5-point star */
@@ -541,13 +525,13 @@ private fun DrawScope.drawStarShieldGeometry(
     burst: Float
 ) {
     // Shield outer bands
-    drawCircle(color = secondary, radius = radius * 0.66f, center = center, style = Stroke(width = 3.dp.toPx()))
-    drawCircle(color = primary.copy(alpha = 0.6f), radius = radius * 0.54f, center = center, style = Stroke(width = 2.5.dp.toPx()))
-    drawCircle(color = secondary, radius = radius * 0.42f, center = center, style = Stroke(width = 2.dp.toPx()))
+    drawCircle(color = secondary, radius = radius * 0.66f, center = center, style = Stroke(width = 2.6.dp.toPx()))
+    drawCircle(color = primary.copy(alpha = 0.6f), radius = radius * 0.55f, center = center, style = Stroke(width = 2.dp.toPx()))
+    drawCircle(color = secondary, radius = radius * 0.45f, center = center, style = Stroke(width = 1.8.dp.toPx()))
 
-    // 5-point star
-    val starRadius = radius * 0.28f + (burst * 3f)
-    val innerRadius = starRadius * 0.42f
+    // 5-point star symmetrically framing the central percentage medallion
+    val starRadius = radius * 0.43f + (burst * 3f)
+    val innerRadius = radius * 0.25f
     val starPath = Path()
 
     for (i in 0 until 10) {
@@ -559,7 +543,7 @@ private fun DrawScope.drawStarShieldGeometry(
     }
     starPath.close()
 
-    drawPath(starPath, color = primary, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(starPath, color = primary, style = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round))
 }
 
 /** Thor: Asgardian runic compass with lightning crackles & triquetra */
@@ -576,19 +560,19 @@ private fun DrawScope.drawMjolnirRunicGeometry(
     // 8 Runic cardinal tick pairs
     for (i in 0 until 8) {
         val angleRad = (i * 45f * PI / 180f).toFloat()
-        val x1 = center.x + (dialRadius - 10f) * cos(angleRad)
-        val y1 = center.y + (dialRadius - 10f) * sin(angleRad)
-        val x2 = center.x + (dialRadius + 6f) * cos(angleRad)
-        val y2 = center.y + (dialRadius + 6f) * sin(angleRad)
-        drawLine(color = secondary, start = Offset(x1, y1), end = Offset(x2, y2), strokeWidth = 2.dp.toPx())
+        val x1 = center.x + (dialRadius - 8f) * cos(angleRad)
+        val y1 = center.y + (dialRadius - 8f) * sin(angleRad)
+        val x2 = center.x + (dialRadius + 5f) * cos(angleRad)
+        val y2 = center.y + (dialRadius + 5f) * sin(angleRad)
+        drawLine(color = secondary, start = Offset(x1, y1), end = Offset(x2, y2), strokeWidth = 1.8.dp.toPx())
     }
 
-    // Triquetra knot symbol in center
-    val triRadius = radius * 0.22f + (burst * 3f)
+    // Triquetra knot symbol symmetrically framing the center medallion
+    val triRadius = radius * 0.26f + (burst * 3f)
     for (i in 0 until 3) {
-        val aRad = (i * 120f * PI / 180f).toFloat()
-        val cx = center.x + (triRadius * 0.6f) * cos(aRad)
-        val cy = center.y + (triRadius * 0.6f) * sin(aRad)
+        val aRad = ((i * 120f - 90f) * PI / 180f).toFloat()
+        val cx = center.x + (triRadius * 0.55f) * cos(aRad)
+        val cy = center.y + (triRadius * 0.55f) * sin(aRad)
         drawCircle(color = primary.copy(alpha = 0.65f), radius = triRadius, center = Offset(cx, cy), style = Stroke(width = 1.4.dp.toPx()))
     }
 }
@@ -620,17 +604,16 @@ private fun DrawScope.drawEyeOfAgamottoGeometry(
         drawRect(color = primary.copy(alpha = 0.4f), topLeft = rectOffset, size = Size(sqSize, sqSize), style = Stroke(width = 1.dp.toPx()))
     }
 
-    // Eye of Agamotto central iris (almond shape)
-    val eyeWidth = radius * 0.32f + (burst * 4f)
-    val eyeHeight = radius * 0.18f
+    // Eye of Agamotto central iris (almond shape framing the 0.24f iris medallion)
+    val eyeWidth = radius * 0.46f + (burst * 4f)
+    val eyeHeight = radius * 0.30f
     val eyePath = Path().apply {
         moveTo(center.x - eyeWidth, center.y)
         quadraticBezierTo(center.x, center.y - eyeHeight, center.x + eyeWidth, center.y)
         quadraticBezierTo(center.x, center.y + eyeHeight, center.x - eyeWidth, center.y)
         close()
     }
-    drawPath(eyePath, color = secondary, style = Stroke(width = 2.dp.toPx()))
-    drawCircle(color = secondary, radius = radius * 0.08f, center = center)
+    drawPath(eyePath, color = secondary, style = Stroke(width = 1.8.dp.toPx()))
 }
 
 /** Spider-Man: Nano-spider targeting reticle & 8-axis web matrix */
@@ -643,16 +626,19 @@ private fun DrawScope.drawSpiderMatrixGeometry(
 ) {
     val webRadius = radius * 0.65f
 
-    // 8 Web Spokes
+    // 8 Web Spokes (starting outside the central percentage medallion)
+    val innerStart = radius * 0.25f
     for (i in 0 until 8) {
         val angleRad = (i * 45f * PI / 180f).toFloat()
+        val xStart = center.x + innerStart * cos(angleRad)
+        val yStart = center.y + innerStart * sin(angleRad)
         val xEnd = center.x + webRadius * cos(angleRad)
         val yEnd = center.y + webRadius * sin(angleRad)
-        drawLine(color = primary.copy(alpha = 0.4f), start = center, end = Offset(xEnd, yEnd), strokeWidth = 1.dp.toPx())
+        drawLine(color = primary.copy(alpha = 0.45f), start = Offset(xStart, yStart), end = Offset(xEnd, yEnd), strokeWidth = 1.dp.toPx())
     }
 
     // Web concentric octagons
-    val rings = listOf(0.35f, 0.50f, 0.65f)
+    val rings = listOf(0.45f, 0.68f, 0.92f)
     for (rFactor in rings) {
         val r = webRadius * rFactor
         val octPath = Path()
@@ -666,12 +652,13 @@ private fun DrawScope.drawSpiderMatrixGeometry(
         drawPath(octPath, color = secondary.copy(alpha = 0.6f), style = Stroke(width = 1.2.dp.toPx()))
     }
 
-    // Central crosshair targeting bracket
-    val crossLen = radius * 0.22f + (burst * 4f)
-    drawLine(color = primary, start = Offset(center.x - crossLen, center.y), end = Offset(center.x - crossLen + 12f, center.y), strokeWidth = 2.dp.toPx())
-    drawLine(color = primary, start = Offset(center.x + crossLen, center.y), end = Offset(center.x + crossLen - 12f, center.y), strokeWidth = 2.dp.toPx())
-    drawLine(color = primary, start = Offset(center.x, center.y - crossLen), end = Offset(center.x, center.y - crossLen + 12f), strokeWidth = 2.dp.toPx())
-    drawLine(color = primary, start = Offset(center.x, center.y + crossLen), end = Offset(center.x, center.y + crossLen - 12f), strokeWidth = 2.dp.toPx())
+    // Central crosshair targeting brackets outside the 0.24f medallion
+    val crossOuter = radius * 0.36f + (burst * 4f)
+    val crossInner = radius * 0.25f
+    drawLine(color = primary, start = Offset(center.x - crossOuter, center.y), end = Offset(center.x - crossInner, center.y), strokeWidth = 2.dp.toPx())
+    drawLine(color = primary, start = Offset(center.x + crossInner, center.y), end = Offset(center.x + crossOuter, center.y), strokeWidth = 2.dp.toPx())
+    drawLine(color = primary, start = Offset(center.x, center.y - crossOuter), end = Offset(center.x, center.y - crossInner), strokeWidth = 2.dp.toPx())
+    drawLine(color = primary, start = Offset(center.x, center.y + crossInner), end = Offset(center.x, center.y + crossOuter), strokeWidth = 2.dp.toPx())
 }
 
 private fun DrawScope.drawGammaFistGeometry(
@@ -693,7 +680,7 @@ private fun DrawScope.drawGammaFistGeometry(
             useCenter = false,
             topLeft = Offset(center.x - coreR, center.y - coreR),
             size = Size(coreR * 2, coreR * 2),
-            style = Stroke(width = 3.5.dp.toPx() + (burst * 4f))
+            style = Stroke(width = 3.2.dp.toPx() + (burst * 4f))
         )
     }
 
@@ -706,9 +693,9 @@ private fun DrawScope.drawGammaFistGeometry(
     )
     drawCircle(
         color = primary.copy(alpha = 0.7f),
-        radius = radius * 0.30f,
+        radius = radius * 0.32f,
         center = center,
-        style = Stroke(width = 2.dp.toPx())
+        style = Stroke(width = 1.8.dp.toPx())
     )
 
     // 4 Heavy Gamma Compression Nodes (North, South, East, West)
@@ -717,8 +704,8 @@ private fun DrawScope.drawGammaFistGeometry(
         val rad = (deg * PI / 180f).toFloat()
         val nodeX = center.x + nodeDist * cos(rad)
         val nodeY = center.y + nodeDist * sin(rad)
-        drawCircle(color = primary, radius = 3.5.dp.toPx(), center = Offset(nodeX, nodeY))
-        drawCircle(color = secondary, radius = 1.8.dp.toPx(), center = Offset(nodeX, nodeY))
+        drawCircle(color = primary, radius = 3.dp.toPx(), center = Offset(nodeX, nodeY))
+        drawCircle(color = secondary, radius = 1.5.dp.toPx(), center = Offset(nodeX, nodeY))
     }
 }
 
@@ -730,7 +717,7 @@ private fun DrawScope.drawOuterTicks(center: Offset, radius: Float, accentColor:
         val isAccent = i == 15 || i == 45 // 90° and 270°
 
         val tickLength = if (isMajor) radius * 0.07f else radius * 0.03f
-        val strokeWidth = if (isMajor) 1.8.dp.toPx() else 1.dp.toPx()
+        val strokeWidth = if (isMajor) 1.6.dp.toPx() else 0.9.dp.toPx()
         val tickColor = when {
             isAccent -> accentColor
             isMajor -> StarkCyanBright
@@ -781,29 +768,31 @@ private fun DrawScope.drawBlackWidowHourglassGeometry(
         style = Stroke(width = 1.5.dp.toPx())
     )
 
-    // Hourglass shape (symmetric triangles meeting at center)
-    val hgHalfW = radius * 0.24f + (burst * 4f)
-    val hgHalfH = radius * 0.36f + (burst * 4f)
-    val waistGap = 2.dp.toPx()
+    // Hourglass shape symmetrically meeting at the central medallion
+    val hgHalfW = radius * 0.28f + (burst * 4f)
+    val hgHalfH = radius * 0.46f + (burst * 4f)
+    val waistGap = radius * 0.20f
 
-    // Top triangle (pointing down)
+    // Top trapezoid/triangle (above center medallion)
     val topPath = Path().apply {
         moveTo(center.x - hgHalfW, center.y - hgHalfH)
         lineTo(center.x + hgHalfW, center.y - hgHalfH)
-        lineTo(center.x, center.y - waistGap)
+        lineTo(center.x + hgHalfW * 0.35f, center.y - waistGap)
+        lineTo(center.x - hgHalfW * 0.35f, center.y - waistGap)
         close()
     }
-    drawPath(topPath, color = primary, style = Stroke(width = 2.dp.toPx()))
+    drawPath(topPath, color = primary, style = Stroke(width = 1.8.dp.toPx()))
     drawPath(topPath, color = primary.copy(alpha = 0.25f))
 
-    // Bottom triangle (pointing up)
+    // Bottom trapezoid/triangle (below center medallion)
     val bottomPath = Path().apply {
         moveTo(center.x - hgHalfW, center.y + hgHalfH)
         lineTo(center.x + hgHalfW, center.y + hgHalfH)
-        lineTo(center.x, center.y + waistGap)
+        lineTo(center.x + hgHalfW * 0.35f, center.y + waistGap)
+        lineTo(center.x - hgHalfW * 0.35f, center.y + waistGap)
         close()
     }
-    drawPath(bottomPath, color = primary, style = Stroke(width = 2.dp.toPx()))
+    drawPath(bottomPath, color = primary, style = Stroke(width = 1.8.dp.toPx()))
     drawPath(bottomPath, color = primary.copy(alpha = 0.25f))
 
     // Tactical crosshairs
@@ -830,7 +819,7 @@ private fun DrawScope.drawAvengersChevronGeometry(
         useCenter = false,
         topLeft = Offset(center.x - aRadius, center.y - aRadius),
         size = Size(aRadius * 2, aRadius * 2),
-        style = Stroke(width = 2.5.dp.toPx() + (burst * 2f))
+        style = Stroke(width = 2.2.dp.toPx() + (burst * 2f))
     )
 
     // Inner orbital accent ring
@@ -841,36 +830,17 @@ private fun DrawScope.drawAvengersChevronGeometry(
         style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f))
     )
 
-    // Stylized slanted "A" chevron
-    val scale = (radius * 0.44f + (burst * 4f))
+    // Symmetric Avengers Chevron framing the central percentage medallion
+    val scale = (radius * 0.46f + (burst * 4f))
     val aPath = Path().apply {
-        // Left slanted leg
-        moveTo(center.x - scale * 0.52f, center.y + scale * 0.85f)
-        lineTo(center.x + scale * 0.10f, center.y - scale * 0.95f)
-        lineTo(center.x + scale * 0.35f, center.y - scale * 0.95f)
-        lineTo(center.x - scale * 0.18f, center.y + scale * 0.85f)
+        moveTo(center.x - scale * 0.55f, center.y + scale * 0.85f)
+        lineTo(center.x, center.y - scale * 0.95f)
+        lineTo(center.x + scale * 0.55f, center.y + scale * 0.85f)
+        lineTo(center.x + scale * 0.30f, center.y + scale * 0.85f)
+        lineTo(center.x, center.y - scale * 0.45f)
+        lineTo(center.x - scale * 0.30f, center.y + scale * 0.85f)
         close()
     }
-    drawPath(aPath, color = primary)
-
-    // Right leg
-    val rPath = Path().apply {
-        moveTo(center.x + scale * 0.18f, center.y - scale * 0.60f)
-        lineTo(center.x + scale * 0.65f, center.y + scale * 0.85f)
-        lineTo(center.x + scale * 0.38f, center.y + scale * 0.85f)
-        lineTo(center.x + scale * 0.05f, center.y - scale * 0.20f)
-        close()
-    }
-    drawPath(rPath, color = primary)
-
-    // Horizontal arrow crossbar pointing right
-    val arrowPath = Path().apply {
-        moveTo(center.x - scale * 0.65f, center.y + scale * 0.12f)
-        lineTo(center.x + scale * 0.85f, center.y + scale * 0.12f)
-        lineTo(center.x + scale * 0.62f, center.y - scale * 0.08f)
-        moveTo(center.x + scale * 0.85f, center.y + scale * 0.12f)
-        lineTo(center.x + scale * 0.62f, center.y + scale * 0.32f)
-    }
-    drawPath(arrowPath, color = secondary, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(aPath, color = primary.copy(alpha = 0.75f))
 }
 
