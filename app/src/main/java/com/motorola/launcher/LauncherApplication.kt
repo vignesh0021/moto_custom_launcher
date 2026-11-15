@@ -3,6 +3,7 @@ package com.motorola.launcher
 import android.app.Application
 import android.os.Process
 import android.util.Log
+import com.motorola.launcher.system.CacheCleaner
 
 /**
  * Custom Application class for Motorola Edge 50 Launcher.
@@ -18,6 +19,8 @@ class LauncherApplication : Application() {
             // Safely initialize with default priority.
             Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT)
             Log.i("LauncherApplication", "Motorola Edge 50 Launcher Initialized successfully.")
+            // Automatic cleanup of cache and temporary files on startup
+            CacheCleaner.clearAll(this)
         } catch (e: Throwable) {
             Log.w("LauncherApplication", "Thread priority initialization skipped: ${e.message}")
         }

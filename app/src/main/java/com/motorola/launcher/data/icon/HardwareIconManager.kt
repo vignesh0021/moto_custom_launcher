@@ -142,4 +142,16 @@ class HardwareIconManager(
         memoryCache.evictAll()
         diskCache.evictAll()
     }
+
+    /**
+     * Invalidates all icons belonging to a package (used on uninstall).
+     */
+    fun invalidateByPackage(packageName: String) {
+        val keys = memoryCache.snapshot().keys.filter { it.contains(packageName) }
+        keys.forEach { key ->
+            memoryCache.remove(key)
+            diskCache.delete(key)
+        }
+    }
+
 }

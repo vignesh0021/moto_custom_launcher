@@ -343,14 +343,23 @@ class AppRepository(
      * Requests application uninstallation.
      */
     fun requestUninstall(item: AppItem) {
+        if (item.packageName == context.packageName) {
+            Log.w(TAG, "Cannot uninstall the launcher itself from within the launcher")
+            return
+        }
         try {
+            // Prefer ACTION_DELETE (standard for launchers). Fall back gracefully.
             val intent = Intent(Intent.ACTION_DELETE).apply {
                 data = Uri.fromParts("package", item.packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                // Optional: request result so we can react later if needed
+                putExtra(Intent.EXTRA_RETURN_RESULT, true)
             }
             context.startActivity(intent)
+            // Proactively clear icon cache for the package being uninstalled
+            iconManager.invalidateByPackage(item.packageName)
         } catch (t: Throwable) {
-            Log.e(TAG, "Failed to request uninstall: ${t.message}")
+            Log.e(TAG, "Failed to request uninstall for ${item.packageName}: ${t.message}", t)
         }
     }
 
@@ -362,4 +371,17 @@ class AppRepository(
         }
         scope.cancel()
     }
+
+    /**
+     * Clears all launcher caches and temporary files.
+     */
+    fun clearCache() {
+        try {
+            iconManager.clearAll()
+            com.motorola.launcher.system.CacheCleaner.clearAll(context, iconManager)
+        } catch (t: Throwable) {
+            Log.e(TAG, "clearCache failed: ${t.message}")
+        }
+    }
+
 }
