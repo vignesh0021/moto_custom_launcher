@@ -781,22 +781,6 @@ fun SettingsCustomizationDialog(
                 }) { Text("Import Backup") }
             }
 
-                        }
-                    )
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "💧 MEET PIXEL FRIEND (TEST COMPANION)",
-                    color = themeColor.bright,
-                    fontSize = 10.5.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-            }
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 // Close Button
                 Box(

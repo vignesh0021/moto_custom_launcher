@@ -15,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -65,7 +67,7 @@ fun LauncherRoot(
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by remember(searchQuery) { repository.searchApps(searchQuery) }.collectAsState(initial = emptyList<AppItem>().toImmutableList())
 
-    val hidden = preferences.hiddenApps.collectAsState().value
+    val hidden = repository.preferences.hiddenApps.collectAsState().value
     val displayedDrawerApps = remember(searchQuery, allApps, searchResults, hidden) {
         if (searchQuery.isBlank()) allApps else searchResults
     }
@@ -205,7 +207,7 @@ fun LauncherRoot(
             MultiPageWorkspace(
                 pages = listOf(
                     dockApps, // page 0: classic workspace
-                    allApps.take(12).let { kotlinx.collections.immutable.toImmutableList() } // page 1: draggable grid
+                    allApps.take(12).toImmutableList() // page 1: draggable grid
                 ),
                 dockApps = dockApps,
                 telemetry = telemetry,
@@ -218,11 +220,11 @@ fun LauncherRoot(
                 onOpenCustomization = { showCustomization = true },
                 modifier = gestureModifier,
                 onReorder = { page, from, to ->
-                    val current = preferences.homePages.value.getOrElse(page) { emptyList() }.toMutableList()
+                    val current = repository.preferences.homePages.value.getOrElse(page) { emptyList() }.toMutableList()
                     if (from in current.indices && to in current.indices) {
                         val item = current.removeAt(from)
                         current.add(to, item)
-                        preferences.setHomePage(page, current)
+                        repository.preferences.setHomePage(page, current)
                     }
                 }
             )
