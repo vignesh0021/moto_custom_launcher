@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -754,6 +755,24 @@ fun SettingsCustomizationDialog(
                             }
                             onDismiss()
                             onTriggerHydrationTest()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            TextButton(onClick = {
+                                /* clearCache lives on repository */ android.util.Log.i("Launcher", "Clear cache requested")
+                                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                            }) { Text("Clear Cache") }
+
+                            TextButton(onClick = {
+                                val backup = preferences.exportBackup()
+                                // In a real build we would share or save the string
+                                android.util.Log.i("Launcher", "Backup exported (${backup.length} chars)")
+                                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                            }) { Text("Export Backup") }
+                        }
+
                         }
                     )
                     .padding(vertical = 10.dp),

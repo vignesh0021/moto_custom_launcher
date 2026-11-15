@@ -245,4 +245,93 @@ class LauncherPreferences(context: Context) {
         private const val KEY_WATER_GLASSES = "water_glasses"
         private const val KEY_LAST_HYDRATION_HOUR = "last_hydration_hour"
     }
+
+    // Home pages (component keys per page)
+    private val _homePages = MutableStateFlow<List<List<String>>>(loadHomePages())
+    val homePages: StateFlow<List<List<String>>> = _homePages.asStateFlow()
+
+    // Drawer folders: folderName -> set of componentKeys
+    private val _folders = MutableStateFlow<Map<String, Set<String>>>(loadFolders())
+    val folders: StateFlow<Map<String, Set<String>>> = _folders.asStateFlow()
+
+    // Hidden apps
+    private val _hiddenApps = MutableStateFlow<Set<String>>(loadHiddenApps())
+    val hiddenApps: StateFlow<Set<String>> = _hiddenApps.asStateFlow()
+
+    // Notification badge counts (package -> count)
+    private val _badgeCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val badgeCounts: StateFlow<Map<String, Int>> = _badgeCounts.asStateFlow()
+
+    private fun loadHomePages(): List<List<String>> {
+        val raw = prefs.getString("home_pages", null) ?: return listOf(emptyList())
+        return raw.split("||").map { it.split("|").filter { k -> k.isNotBlank() } }
+    }
+
+    private fun loadFolders(): Map<String, Set<String>> {
+        val raw = prefs.getString("folders", null) ?: return emptyMap()
+        return raw.split("||").mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size == 2) parts[0] to parts[1].split("|").toSet() else null
+        }.toMap()
+    }
+
+    private fun loadHiddenApps(): Set<String> {
+        return prefs.getStringSet("hidden_apps", emptySet()) ?: emptySet()
+    }
+
+    fun setHomePage(pageIndex: Int, keys: List<String>) {
+        val current = _homePages.value.toMutableList()
+        while (current.size <= pageIndex) current.add(emptyList())
+        current[pageIndex] = keys
+        _homePages.value = current
+        prefs.edit().putString("home_pages", current.joinToString("||") { it.joinToString("|") }).apply()
+    }
+
+    fun addFolder(name: String, keys: Set<String>) {
+        val updated = _folders.value.toMutableMap()
+        updated[name] = keys
+        _folders.value = updated
+        saveFolders(updated)
+    }
+
+    fun toggleHidden(componentKey: String) {
+        val current = _hiddenApps.value.toMutableSet()
+        if (componentKey in current) current.remove(componentKey) else current.add(componentKey)
+        _hiddenApps.value = current
+        prefs.edit().putStringSet("hidden_apps", current).apply()
+    }
+
+    fun updateBadge(packageName: String, count: Int) {
+        val updated = _badgeCounts.value.toMutableMap()
+        if (count <= 0) updated.remove(packageName) else updated[packageName] = count
+        _badgeCounts.value = updated
+    }
+
+    private fun saveFolders(map: Map<String, Set<String>>) {
+        val raw = map.entries.joinToString("||") { "${it.key}:${it.value.joinToString("|")}" }
+        prefs.edit().putString("folders", raw).apply()
+    }
+
+    fun exportBackup(): String {
+        return prefs.all.entries.joinToString("
+") { "${it.key}=${it.value}" }
+    }
+
+    fun importBackup(data: String) {
+        val editor = prefs.edit()
+        data.lines().forEach { line ->
+            val idx = line.indexOf('=')
+            if (idx > 0) {
+                val k = line.substring(0, idx)
+                val v = line.substring(idx + 1)
+                editor.putString(k, v)
+            }
+        }
+        editor.apply()
+        // Reload states (simplified)
+        _homePages.value = loadHomePages()
+        _folders.value = loadFolders()
+        _hiddenApps.value = loadHiddenApps()
+    }
+
 }

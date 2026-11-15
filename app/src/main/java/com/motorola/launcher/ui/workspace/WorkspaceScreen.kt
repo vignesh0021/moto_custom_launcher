@@ -2,6 +2,8 @@ package com.motorola.launcher.ui.workspace
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -64,6 +66,7 @@ internal val HudGlass = Color(0x9903070E)
  * two telemetry chips + two action pills below it, and the dock at the bottom.
  * Nothing floats beside the reactor, so the wallpaper and the core stay clear.
  */
+@Composable
 @Composable
 fun WorkspaceScreen(
     dockApps: ImmutableList<AppItem>,

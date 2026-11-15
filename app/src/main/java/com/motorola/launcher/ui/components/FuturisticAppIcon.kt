@@ -5,6 +5,8 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -39,6 +41,7 @@ import com.motorola.launcher.ui.theme.TextSecondary
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FuturisticAppIcon(
+    badgeCount: Int = 0,
     app: AppItem,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -139,4 +142,23 @@ private fun renderIcon(app: AppItem, sizePx: Int): Bitmap? {
     } catch (_: Exception) {
         null
     }
+
+        if (badgeCount > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(18.dp)
+                    .background(Color.Red, CircleShape)
+                    .padding(2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (badgeCount > 99) "99+" else badgeCount.toString(),
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
 }

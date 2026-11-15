@@ -36,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.motorola.launcher.ui.theme.MotoLauncherTheme
 import com.motorola.launcher.ui.workspace.StarkWallpaperLayer
+import com.motorola.launcher.ui.workspace.MultiPageWorkspace
 import com.motorola.launcher.ui.workspace.WorkspaceScreen
 import kotlinx.collections.immutable.toImmutableList
 
@@ -188,7 +189,8 @@ fun LauncherRoot(
             )
 
             // Screen 1: Workspace Layer (STARK OS Command Center)
-            WorkspaceScreen(
+            MultiPageWorkspace(
+                pages = listOf(dockApps), // page 0 for now
                 dockApps = dockApps,
                 telemetry = telemetry,
                 progressProvider = { gestureState.progress },
