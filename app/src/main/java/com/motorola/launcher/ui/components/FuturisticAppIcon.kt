@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
@@ -54,8 +55,8 @@ fun FuturisticAppIcon(
     val density = LocalDensity.current
     val px = with(density) { iconSize.toPx() }
 
-    val bitmap = remember(app.packageName, px) {
-        renderIcon(app, px.toInt())
+    val bitmap = remember(app.iconBitmap, app.packageName, px) {
+        app.iconBitmap?.asAndroidBitmap() ?: renderIcon(app, px.toInt())
     }
 
     Column(
