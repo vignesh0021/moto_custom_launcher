@@ -203,7 +203,10 @@ fun LauncherRoot(
 
             // Screen 1: Workspace Layer (STARK OS Command Center)
             MultiPageWorkspace(
-                pages = listOf(dockApps), // page 0 for now
+                pages = listOf(
+                    dockApps, // page 0: classic workspace
+                    allApps.take(12).let { kotlinx.collections.immutable.toImmutableList() } // page 1: draggable grid
+                ),
                 dockApps = dockApps,
                 telemetry = telemetry,
                 progressProvider = { gestureState.progress },
@@ -213,7 +216,15 @@ fun LauncherRoot(
                 onOpenDiagnostics = { showJarvisDashboard = true },
                 onOpenQuickControls = { showQuickControls = true },
                 onOpenCustomization = { showCustomization = true },
-                modifier = gestureModifier
+                modifier = gestureModifier,
+                onReorder = { page, from, to ->
+                    val current = preferences.homePages.value.getOrElse(page) { emptyList() }.toMutableList()
+                    if (from in current.indices && to in current.indices) {
+                        val item = current.removeAt(from)
+                        current.add(to, item)
+                        preferences.setHomePage(page, current)
+                    }
+                }
             )
 
             // Screen 2: App Drawer Layer (Active when drawer is visible or transitioning)

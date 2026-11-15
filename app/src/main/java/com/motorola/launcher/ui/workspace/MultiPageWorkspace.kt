@@ -27,7 +27,8 @@ fun MultiPageWorkspace(
     onOpenQuickControls: () -> Unit,
     onOpenCustomization: () -> Unit,
     modifier: Modifier = Modifier,
-    onPageChanged: (Int) -> Unit = {}
+    onPageChanged: (Int) -> Unit = {},
+    onReorder: (pageIndex: Int, from: Int, to: Int) -> Unit = { _, _, _ -> }
 ) {
     val pageCount = pages.size.coerceAtLeast(1)
     val pagerState = rememberPagerState(pageCount = { pageCount })
@@ -41,16 +42,25 @@ fun MultiPageWorkspace(
         modifier = modifier
     ) { page ->
         val pageApps = pages.getOrElse(page) { kotlinx.collections.immutable.persistentListOf() }
-        WorkspaceScreen(
-            dockApps = if (page == 0) dockApps else kotlinx.collections.immutable.persistentListOf(),
-            telemetry = telemetry,
-            progressProvider = progressProvider,
-            onAppClick = onAppClick,
-            onAppLongClick = onAppLongClick,
-            onOpenDrawerClick = onOpenDrawerClick,
-            onOpenDiagnostics = onOpenDiagnostics,
-            onOpenQuickControls = onOpenQuickControls,
-            onOpenCustomization = onOpenCustomization
-        )
+        if (page == 0) {
+            WorkspaceScreen(
+                dockApps = dockApps,
+                telemetry = telemetry,
+                progressProvider = progressProvider,
+                onAppClick = onAppClick,
+                onAppLongClick = onAppLongClick,
+                onOpenDrawerClick = onOpenDrawerClick,
+                onOpenDiagnostics = onOpenDiagnostics,
+                onOpenQuickControls = onOpenQuickControls,
+                onOpenCustomization = onOpenCustomization
+            )
+        } else {
+            DraggableHomeGrid(
+                apps = pageApps,
+                onReorder = { from, to -> onReorder(page, from, to) },
+                onAppClick = onAppClick,
+                onAppLongClick = onAppLongClick
+            )
+        }
     }
 }
