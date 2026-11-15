@@ -334,4 +334,13 @@ class LauncherPreferences(context: Context) {
         _hiddenApps.value = loadHiddenApps()
     }
 
+
+    private val _doubleTapSleep = MutableStateFlow(prefs.getBoolean("double_tap_sleep", false))
+    val doubleTapSleep: StateFlow<Boolean> = _doubleTapSleep.asStateFlow()
+
+    fun setDoubleTapSleep(enabled: Boolean) {
+        _doubleTapSleep.value = enabled
+        prefs.edit().putBoolean("double_tap_sleep", enabled).apply()
+    }
+
 }

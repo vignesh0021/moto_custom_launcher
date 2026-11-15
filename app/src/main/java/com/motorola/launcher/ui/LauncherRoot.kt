@@ -65,7 +65,8 @@ fun LauncherRoot(
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by remember(searchQuery) { repository.searchApps(searchQuery) }.collectAsState(initial = emptyList<AppItem>().toImmutableList())
 
-    val displayedDrawerApps = remember(searchQuery, allApps, searchResults) {
+    val hidden = preferences.hiddenApps.collectAsState().value
+    val displayedDrawerApps = remember(searchQuery, allApps, searchResults, hidden) {
         if (searchQuery.isBlank()) allApps else searchResults
     }
 
@@ -178,6 +179,18 @@ fun LauncherRoot(
             val maxDragPx = with(density) { maxHeight.toPx() }
 
             val gestureModifier = Modifier
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            // Double-tap to sleep (requires DEVICE_ADMIN or just lock if available)
+                            try {
+                                val dpm = context.getSystemService(android.app.admin.DevicePolicyManager::class.java)
+                                // Fallback: just log for now; full lock needs DeviceAdmin
+                                android.util.Log.i("Launcher", "Double-tap sleep requested")
+                            } catch (_: Throwable) {}
+                        }
+                    )
+                }
                 .fillMaxSize()
                 .drawerSwipeGesture(gestureState, maxDragPx)
 

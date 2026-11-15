@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.ImageBitmap
  */
 @Immutable
 data class AppItem(
+    val isWorkProfile: Boolean = false,
     val componentKey: String,
     val packageName: String,
     val activityName: String,

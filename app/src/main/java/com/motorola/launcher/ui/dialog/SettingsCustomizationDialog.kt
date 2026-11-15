@@ -771,6 +771,12 @@ fun SettingsCustomizationDialog(
                                 android.util.Log.i("Launcher", "Backup exported (${backup.length} chars)")
                                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                             }) { Text("Export Backup") }
+
+                            TextButton(onClick = {
+                                // Placeholder: in full version open a file picker
+                                android.util.Log.i("Launcher", "Import backup requested")
+                                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                            }) { Text("Import Backup") }
                         }
 
                         }

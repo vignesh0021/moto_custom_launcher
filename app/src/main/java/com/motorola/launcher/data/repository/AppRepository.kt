@@ -206,7 +206,8 @@ class AppRepository(
                                 label = label,
                                 userHandle = user,
                                 iconCacheKey = iconKey,
-                                iconBitmap = cachedBitmap
+                                iconBitmap = cachedBitmap,
+                                isWorkProfile = userSerial != 0L
                             )
                         )
                     } catch (c: CancellationException) {
