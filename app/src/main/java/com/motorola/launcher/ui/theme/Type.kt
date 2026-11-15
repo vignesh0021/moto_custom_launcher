@@ -9,18 +9,26 @@ import androidx.compose.ui.unit.sp
 val Typography = Typography(
     displayLarge = TextStyle(
         fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Light,
-        fontSize = 64.sp,
-        lineHeight = 72.sp,
-        letterSpacing = (-1.0).sp,
+        fontWeight = FontWeight.Thin,
+        fontSize = 56.sp,
+        lineHeight = 64.sp,
+        letterSpacing = (-0.5).sp,
         color = TextPrimary
+    ),
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        letterSpacing = 1.8.sp,
+        color = StarkCyan
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 1.2.sp,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 1.4.sp,
         color = StarkCyan
     ),
     bodyMedium = TextStyle(
@@ -30,45 +38,20 @@ val Typography = Typography(
         lineHeight = 16.sp,
         color = TextSecondary
     ),
+    labelMedium = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        letterSpacing = 1.2.sp,
+        color = TextPrimary
+    ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
-        fontSize = 10.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 1.5.sp,
+        fontSize = 9.sp,
+        lineHeight = 12.sp,
+        letterSpacing = 1.6.sp,
         color = StarkCyan
     )
-)
-
-// Dedicated Technical HUD Typography for STARK OS / JARVIS
-val StarkHudHeaderStyle = TextStyle(
-    fontFamily = FontFamily.Monospace,
-    fontWeight = FontWeight.Bold,
-    fontSize = 11.sp,
-    letterSpacing = 2.0.sp,
-    color = StarkCyan
-)
-
-val StarkHudDataStyle = TextStyle(
-    fontFamily = FontFamily.Monospace,
-    fontWeight = FontWeight.SemiBold,
-    fontSize = 13.sp,
-    letterSpacing = 1.0.sp,
-    color = TextPrimary
-)
-
-val StarkClockStyle = TextStyle(
-    fontFamily = FontFamily.Monospace,
-    fontWeight = FontWeight.Light,
-    fontSize = 68.sp,
-    letterSpacing = (-2.0).sp,
-    color = TextPrimary
-)
-
-val StarkMicroTextStyle = TextStyle(
-    fontFamily = FontFamily.Monospace,
-    fontWeight = FontWeight.Normal,
-    fontSize = 9.sp,
-    letterSpacing = 1.2.sp,
-    color = TextDimHud
 )

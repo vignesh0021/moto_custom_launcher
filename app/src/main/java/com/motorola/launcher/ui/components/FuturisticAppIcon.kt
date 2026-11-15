@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -62,7 +63,16 @@ fun FuturisticAppIcon(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(modifier = Modifier.size(iconSize)) {
+        Box(
+            modifier = Modifier
+                .size(iconSize)
+                .graphicsLayer {
+                    // Subtle global rotation / perspective for depth
+                    rotationY = 4f
+                    rotationX = -2f
+                    cameraDistance = 12f * density.density
+                }
+        ) {
             Canvas(modifier = Modifier.size(iconSize)) {
                 val shape = chamferedShape(cutSize = 8.dp.toPx())
                 // Glass background
@@ -106,9 +116,10 @@ fun FuturisticAppIcon(
             Text(
                 text = app.label,
                 color = TextSecondary,
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.6.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,

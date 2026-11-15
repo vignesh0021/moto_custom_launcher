@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import com.motorola.launcher.system.SystemTelemetryState
+import com.motorola.launcher.ui.components.subtleGlobalRotation
 import com.motorola.launcher.ui.model.AppItem
 import kotlinx.collections.immutable.ImmutableList
 
@@ -39,7 +40,7 @@ fun MultiPageWorkspace(
 
     HorizontalPager(
         state = pagerState,
-        modifier = modifier
+        modifier = modifier.subtleGlobalRotation()
     ) { page ->
         val pageApps = pages.getOrElse(page) { kotlinx.collections.immutable.persistentListOf() }
         if (page == 0) {
