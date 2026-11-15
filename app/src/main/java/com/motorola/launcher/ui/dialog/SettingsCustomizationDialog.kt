@@ -755,29 +755,31 @@ fun SettingsCustomizationDialog(
                             }
                             onDismiss()
                             onTriggerHydrationTest()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            TextButton(onClick = {
-                                /* clearCache lives on repository */ android.util.Log.i("Launcher", "Clear cache requested")
-                                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-                            }) { Text("Clear Cache") }
-
-                            TextButton(onClick = {
-                                val backup = preferences.exportBackup()
-                                // In a real build we would share or save the string
-                                android.util.Log.i("Launcher", "Backup exported (${backup.length} chars)")
-                                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-                            }) { Text("Export Backup") }
-
-                            TextButton(onClick = {
-                                // Placeholder: in full version open a file picker
-                                android.util.Log.i("Launcher", "Import backup requested")
-                                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-                            }) { Text("Import Backup") }
                         }
+                    )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                TextButton(onClick = {
+                    android.util.Log.i("Launcher", "Clear cache requested")
+                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                }) { Text("Clear Cache") }
+
+                TextButton(onClick = {
+                    val backup = preferences.exportBackup()
+                    android.util.Log.i("Launcher", "Backup exported (${backup.length} chars)")
+                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                }) { Text("Export Backup") }
+
+                TextButton(onClick = {
+                    android.util.Log.i("Launcher", "Import backup requested")
+                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                }) { Text("Import Backup") }
+            }
 
                         }
                     )

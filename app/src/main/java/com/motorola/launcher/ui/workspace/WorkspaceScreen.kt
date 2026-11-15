@@ -67,7 +67,6 @@ internal val HudGlass = Color(0x9903070E)
  * Nothing floats beside the reactor, so the wallpaper and the core stay clear.
  */
 @Composable
-@Composable
 fun WorkspaceScreen(
     dockApps: ImmutableList<AppItem>,
     telemetry: SystemTelemetryState,

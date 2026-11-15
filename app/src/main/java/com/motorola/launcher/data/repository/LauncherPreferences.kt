@@ -313,8 +313,7 @@ class LauncherPreferences(context: Context) {
     }
 
     fun exportBackup(): String {
-        return prefs.all.entries.joinToString("
-") { "${it.key}=${it.value}" }
+        return prefs.all.entries.joinToString("\n") { "${it.key}=${it.value}" }
     }
 
     fun importBackup(data: String) {
