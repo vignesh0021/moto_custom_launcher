@@ -111,6 +111,23 @@ fun FuturisticAppIcon(
                     strokeWidth = 1.5.dp.toPx()
                 )
             }
+            if (badgeCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(18.dp)
+                        .background(Color.Red, CircleShape)
+                        .padding(2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (badgeCount > 99) "99+" else badgeCount.toString(),
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
         if (showLabel) {
             Text(
@@ -153,23 +170,5 @@ private fun renderIcon(app: AppItem, sizePx: Int): Bitmap? {
     } catch (_: Exception) {
         null
     }
-
-        if (badgeCount > 0) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(18.dp)
-                    .background(Color.Red, CircleShape)
-                    .padding(2.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (badgeCount > 99) "99+" else badgeCount.toString(),
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
 
 }
