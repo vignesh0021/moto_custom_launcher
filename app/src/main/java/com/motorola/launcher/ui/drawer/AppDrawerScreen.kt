@@ -91,6 +91,7 @@ fun AppDrawerScreen(
     val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val themeColor = customization.themeColor
     val view = LocalView.current
+    val badges by com.motorola.launcher.system.NotificationBadgeService.badgeCounts.collectAsState()
     var selectedTab by remember { mutableStateOf("ALL") }
 
     // Filter apps based on active tab
@@ -287,7 +288,6 @@ fun AppDrawerScreen(
                         key = { it.componentKey },
                         contentType = { "app_icon" }
                     ) { appItem ->
-                        val badges by NotificationBadgeService.badgeCounts.collectAsState()
                         FuturisticAppIcon(
                             app = appItem,
                             badgeCount = badges[appItem.packageName] ?: 0,
