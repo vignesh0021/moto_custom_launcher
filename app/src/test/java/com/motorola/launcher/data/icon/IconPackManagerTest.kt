@@ -62,11 +62,73 @@ class IconPackManagerTest {
         val info = IconPackInfo(
             packageName = "com.theme.neon",
             label = "Neon Cyber Icons",
-            isDefault = false
+            isDefault = false,
+            isBuiltIn = true,
+            description = "Custom neon cyber plate styling"
         )
         assertEquals("com.theme.neon", info.packageName)
         assertEquals("Neon Cyber Icons", info.label)
         assertEquals(false, info.isDefault)
+        assertEquals(true, info.isBuiltIn)
+        assertEquals("Custom neon cyber plate styling", info.description)
         assertNull(info.iconBitmap)
+    }
+
+    @Test
+    fun testIsBuiltInPackRecognition() {
+        assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_STARK_QUANTUM))
+        assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_JARVIS_TACTICAL))
+        assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_VIBRANIUM_STEALTH))
+        assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_ARC_REACTOR))
+        assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_CUSTOM_SDCARD))
+
+        assertEquals(false, IconPackManager.isBuiltInPack(null))
+        assertEquals(false, IconPackManager.isBuiltInPack(""))
+        assertEquals(false, IconPackManager.isBuiltInPack("com.whicons.iconpack"))
+    }
+
+    @Test
+    fun testCyberIconGeneratorCategoryDetection() {
+        assertEquals(
+            CyberIconGenerator.AppCategory.PHONE,
+            CyberIconGenerator.detectCategory("com.google.android.dialer", "DialtactsActivity")
+        )
+        assertEquals(
+            CyberIconGenerator.AppCategory.MESSAGE,
+            CyberIconGenerator.detectCategory("com.google.android.apps.messaging", "ConversationListActivity")
+        )
+        assertEquals(
+            CyberIconGenerator.AppCategory.CAMERA,
+            CyberIconGenerator.detectCategory("com.google.android.GoogleCamera", "CameraActivity")
+        )
+        assertEquals(
+            CyberIconGenerator.AppCategory.BROWSER,
+            CyberIconGenerator.detectCategory("com.android.chrome", "Main")
+        )
+        assertEquals(
+            CyberIconGenerator.AppCategory.SETTINGS,
+            CyberIconGenerator.detectCategory("com.android.settings", "Settings")
+        )
+        assertEquals(
+            CyberIconGenerator.AppCategory.YOUTUBE,
+            CyberIconGenerator.detectCategory("com.google.android.youtube", "WatchWhileActivity")
+        )
+        assertEquals(
+            CyberIconGenerator.AppCategory.GENERIC,
+            CyberIconGenerator.detectCategory("com.random.unrecognized.app", "EntryActivity")
+        )
+    }
+
+    @Test
+    fun testCyberIconGeneratorPalettes() {
+        val starkPalette = CyberIconGenerator.getPalette(CyberIconGenerator.BUILTIN_STARK_QUANTUM)
+        assertEquals(0xFF00E5FF.toInt(), starkPalette.primaryColor)
+        assertEquals(0xFFFFD700.toInt(), starkPalette.secondaryColor)
+
+        val jarvisPalette = CyberIconGenerator.getPalette(CyberIconGenerator.BUILTIN_JARVIS_TACTICAL)
+        assertEquals(0xFF00B0FF.toInt(), jarvisPalette.primaryColor)
+
+        val arcPalette = CyberIconGenerator.getPalette(CyberIconGenerator.BUILTIN_ARC_REACTOR)
+        assertEquals(0xFFFF1744.toInt(), arcPalette.primaryColor)
     }
 }

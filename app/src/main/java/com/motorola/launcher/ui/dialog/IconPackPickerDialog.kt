@@ -159,11 +159,15 @@ fun IconPackPickerDialog(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) marvelTheme.colors.primary else Color(0x44FFFFFF)),
+                                        .background(if (isSelected) marvelTheme.colors.primary else Color(0x22FFFFFF)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = if (pack.isDefault) "⚡" else "🎨",
+                                        text = when {
+                                            pack.isDefault -> "⚡"
+                                            pack.isBuiltIn -> "💠"
+                                            else -> "🎨"
+                                        },
                                         fontSize = 18.sp
                                     )
                                 }
@@ -171,22 +175,46 @@ fun IconPackPickerDialog(
                                 Spacer(modifier = Modifier.width(12.dp))
 
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = pack.label,
-                                        color = if (isSelected) marvelTheme.colors.bright else TextPrimary,
-                                        fontSize = 13.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = pack.label,
+                                            color = if (isSelected) marvelTheme.colors.bright else TextPrimary,
+                                            fontSize = 13.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+
+                                        if (pack.isBuiltIn) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(marvelTheme.colors.primary.copy(alpha = 0.25f))
+                                                    .border(0.5.dp, marvelTheme.colors.primary, RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                            ) {
+                                                Text(
+                                                    text = "BUILT-IN",
+                                                    color = marvelTheme.colors.bright,
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
 
                                     Text(
-                                        text = if (pack.isDefault) "Original Stark HUD Cyber insiginas" else pack.packageName,
+                                        text = pack.description ?: (if (pack.isDefault) "Original Stark HUD Cyber insignias" else pack.packageName),
                                         color = TextSecondary,
                                         fontSize = 10.sp,
                                         fontFamily = FontFamily.Monospace,
-                                        maxLines = 1,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }

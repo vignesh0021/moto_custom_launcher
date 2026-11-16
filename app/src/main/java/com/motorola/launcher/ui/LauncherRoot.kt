@@ -206,28 +206,10 @@ fun LauncherRoot(
         }
     }
 
-    // Marvel Hydration Companion check with user-configurable interval
-    LaunchedEffect(customization.hydrationReminderEnabled, customization.hydrationIntervalMinutes, hydrationSettings.enabled) {
-        if (!customization.hydrationReminderEnabled && !hydrationSettings.enabled) return@LaunchedEffect
-        while (true) {
-            val now = System.currentTimeMillis()
-            val intervalMin = if (hydrationSettings.enabled) hydrationSettings.reminderIntervalMinutes else customization.hydrationIntervalMinutes
-            val intervalMillis = intervalMin.coerceAtLeast(1) * 60 * 1000L
-            if (!showHydrationReminder && now - customization.lastHydrationHour >= intervalMillis) {
-                val keyguard = context.getSystemService(android.content.Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
-                val isLocked = keyguard?.isKeyguardLocked == true
-                if (isLocked) {
-                    val dialogue = orchestrator.getNextDialogue()
-                    com.motorola.launcher.system.hydration.HydrationNotificationHelper.showReminderNotification(
-                        context = context,
-                        dialogue = dialogue,
-                        consumedMl = todayIntakeMl,
-                        targetMl = hydrationSettings.dailyGoalMl
-                    )
-                }
-                showHydrationReminder = true
-            }
-            delay(30000L)
+    // Initialize hydration timestamp on first launch so it never triggers immediately
+    LaunchedEffect(Unit) {
+        if (customization.lastHydrationHour == 0L) {
+            repository.preferences.recordWaterRefused()
         }
     }
 
@@ -655,12 +637,16 @@ fun LauncherRoot(
                     coroutineScope.launch {
                         orchestrator.recordWaterIntake(250, "COMPANION_PROMPT")
                     }
+                    repository.preferences.recordWaterAccepted()
                     showHydrationReminder = false
                 },
                 onRefuseWater = {
+                    orchestrator.snoozeReminder()
+                    repository.preferences.recordWaterRefused()
                     showHydrationReminder = false
                 },
                 onDismiss = {
+                    repository.preferences.recordWaterRefused()
                     showHydrationReminder = false
                 }
             )

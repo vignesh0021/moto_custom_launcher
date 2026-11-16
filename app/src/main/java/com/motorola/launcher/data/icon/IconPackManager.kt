@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.compose.runtime.Immutable
@@ -13,28 +15,36 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+import java.io.File
+import java.io.FileInputStream
 import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Representation of an installed third-party icon pack (Nova, ADW, Apex, Go, Total Launcher compatible).
+ * Representation of an installed or built-in icon pack.
  */
 @Immutable
 data class IconPackInfo(
     val packageName: String,
     val label: String,
     val isDefault: Boolean = false,
+    val isBuiltIn: Boolean = false,
+    val description: String? = null,
     val iconBitmap: Bitmap? = null
 )
 
 /**
  * High-performance, zero-allocation icon pack parser and resource resolver.
- * Parses standard `appfilter.xml` from target icon pack APK and extracts drawable mappings.
+ * Supports:
+ * 1. Official Built-in Marvel Cyber HUD Icon Packs (Stark, J.A.R.V.I.S., Vibranium, Arc Reactor)
+ * 2. Custom AI Studio Icon Pack (/sdcard/Download/moto_launcher_iconpack)
+ * 3. Third-party icon packs (Nova, Apex, ADW, Go, Total Launcher compatible appfilter.xml)
  */
 class IconPackManager(private val context: Context) {
 
     companion object {
         private const val TAG = "IconPackManager"
+        const val CUSTOM_ICONPACK_DIR = "/sdcard/Download/moto_launcher_iconpack"
 
         val ICON_PACK_INTENT_ACTIONS = listOf(
             "com.novalauncher.THEME",
@@ -44,6 +54,16 @@ class IconPackManager(private val context: Context) {
             "com.fede.launcher.THEME_ICONPACK",
             "com.gau.go.launcherex.theme"
         )
+
+        fun isBuiltInPack(pkg: String?): Boolean {
+            return pkg != null && (
+                pkg == CyberIconGenerator.BUILTIN_STARK_QUANTUM ||
+                pkg == CyberIconGenerator.BUILTIN_JARVIS_TACTICAL ||
+                pkg == CyberIconGenerator.BUILTIN_VIBRANIUM_STEALTH ||
+                pkg == CyberIconGenerator.BUILTIN_ARC_REACTOR ||
+                pkg == CyberIconGenerator.BUILTIN_CUSTOM_SDCARD
+            )
+        }
 
         /**
          * Normalizes component string:
@@ -68,20 +88,64 @@ class IconPackManager(private val context: Context) {
     private var currentPackResources: Resources? = null
 
     /**
-     * Queries all installed applications that declare icon pack intent filters.
+     * Queries all built-in and installed applications that declare icon pack intent filters.
      */
     fun getInstalledIconPacks(): List<IconPackInfo> {
         val result = mutableListOf<IconPackInfo>()
 
-        // Default Marvel HUD insignia entry
+        // 1. Default Marvel HUD Insignia
         result.add(
             IconPackInfo(
                 packageName = "",
                 label = "Marvel HUD Insignia (Default)",
-                isDefault = true
+                isDefault = true,
+                description = "Standard system icons framed with holographic Marvel hero HUD brackets"
             )
         )
 
+        // 2. Built-in Marvel Stark OS Quantum Icon Packs
+        result.add(
+            IconPackInfo(
+                packageName = CyberIconGenerator.BUILTIN_STARK_QUANTUM,
+                label = "⚡ Stark Quantum HUD",
+                isBuiltIn = true,
+                description = "Full vector cyber plates with glowing cyan & arc gold conduits"
+            )
+        )
+        result.add(
+            IconPackInfo(
+                packageName = CyberIconGenerator.BUILTIN_JARVIS_TACTICAL,
+                label = "🔷 J.A.R.V.I.S. Tactical",
+                isBuiltIn = true,
+                description = "Tactical holographic azure interface with amber radar accents"
+            )
+        )
+        result.add(
+            IconPackInfo(
+                packageName = CyberIconGenerator.BUILTIN_VIBRANIUM_STEALTH,
+                label = "🟣 Vibranium Stealth",
+                isBuiltIn = true,
+                description = "Dark matte obsidian armor geometry with royal amethyst glow"
+            )
+        )
+        result.add(
+            IconPackInfo(
+                packageName = CyberIconGenerator.BUILTIN_ARC_REACTOR,
+                label = "🔴 Arc Reactor Overcharge",
+                isBuiltIn = true,
+                description = "Overcharged scarlet arc conduits with solar gold nodes"
+            )
+        )
+        result.add(
+            IconPackInfo(
+                packageName = CyberIconGenerator.BUILTIN_CUSTOM_SDCARD,
+                label = "📁 Custom AI Studio Pack",
+                isBuiltIn = true,
+                description = "Picks custom generated PNGs from /sdcard/Download/moto_launcher_iconpack"
+            )
+        )
+
+        // 3. Installed Third-Party Icon Packs (Nova, Apex, Total Launcher compatible)
         val seenPackages = mutableSetOf<String>()
 
         for (action in ICON_PACK_INTENT_ACTIONS) {
@@ -95,7 +159,9 @@ class IconPackManager(private val context: Context) {
                         IconPackInfo(
                             packageName = pkgName,
                             label = label,
-                            isDefault = false
+                            isDefault = false,
+                            isBuiltIn = false,
+                            description = "Installed third-party icon pack ($pkgName)"
                         )
                     )
                 }
@@ -106,13 +172,25 @@ class IconPackManager(private val context: Context) {
     }
 
     /**
-     * Loads and parses `appfilter.xml` for the given icon pack package.
+     * Loads and parses icon pack mappings (or prepares built-in packs).
      */
     suspend fun loadIconPack(iconPackPackage: String?): Boolean = withContext(Dispatchers.IO) {
         if (iconPackPackage.isNullOrBlank()) {
             currentPackPackage = null
             currentPackResources = null
             componentToDrawableMap.clear()
+            return@withContext true
+        }
+
+        // Built-in Marvel Icon Packs
+        if (isBuiltInPack(iconPackPackage)) {
+            currentPackPackage = iconPackPackage
+            currentPackResources = null
+            componentToDrawableMap.clear()
+            if (iconPackPackage == CyberIconGenerator.BUILTIN_CUSTOM_SDCARD) {
+                loadSdcardAppFilter()
+            }
+            Log.i(TAG, "Activated built-in icon pack: $iconPackPackage")
             return@withContext true
         }
 
@@ -137,6 +215,33 @@ class IconPackManager(private val context: Context) {
             currentPackResources = null
             componentToDrawableMap.clear()
             false
+        }
+    }
+
+    /**
+     * Loads custom appfilter.xml from SD card if present.
+     */
+    private fun loadSdcardAppFilter() {
+        val dir = File(CUSTOM_ICONPACK_DIR)
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        val appFilterFile = File(dir, "appfilter.xml")
+        if (!appFilterFile.exists() || !appFilterFile.canRead()) return
+        var inputStream: InputStream? = null
+        try {
+            inputStream = FileInputStream(appFilterFile)
+            val factory = XmlPullParserFactory.newInstance()
+            factory.isNamespaceAware = false
+            val parser = factory.newPullParser()
+            parser.setInput(inputStream, "UTF-8")
+            val map = parseFromXmlPullParser(parser)
+            componentToDrawableMap.putAll(map)
+            Log.i(TAG, "Loaded ${map.size} custom icon mappings from $CUSTOM_ICONPACK_DIR/appfilter.xml")
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed loading custom appfilter.xml: ${e.message}")
+        } finally {
+            try { inputStream?.close() } catch (_: Throwable) {}
         }
     }
 
@@ -191,7 +296,6 @@ class IconPackManager(private val context: Context) {
                 val drawable = parser.getAttributeValue(null, "drawable")
 
                 if (!component.isNullOrBlank() && !drawable.isNullOrBlank()) {
-                    // Extract ComponentInfo{com.example/com.example.MainActivity}
                     val normalizedKey = normalizeComponentString(component)
                     if (normalizedKey != null) {
                         mapping[normalizedKey] = drawable
@@ -204,15 +308,48 @@ class IconPackManager(private val context: Context) {
         return mapping
     }
 
-
     /**
      * Resolves an app's icon Drawable from the active icon pack.
-     * Returns null if no custom icon pack is active or no mapping exists.
+     * Returns null if default insignia is active, allowing standard icon loader fallback.
      */
     fun getAppIcon(packageName: String, activityName: String): Drawable? {
-        val packRes = currentPackResources ?: return null
         val packPkg = currentPackPackage ?: return null
 
+        // 1. Custom AI Studio Pack from SD Card
+        if (packPkg == CyberIconGenerator.BUILTIN_CUSTOM_SDCARD) {
+            val key = "$packageName/$activityName"
+            val drawableName = componentToDrawableMap[key] ?: componentToDrawableMap[packageName]
+            if (drawableName != null) {
+                val customFile = File(CUSTOM_ICONPACK_DIR, "$drawableName.png")
+                if (customFile.exists() && customFile.canRead()) {
+                    val bmp = BitmapFactory.decodeFile(customFile.absolutePath)
+                    if (bmp != null) return BitmapDrawable(context.resources, bmp)
+                }
+            }
+
+            val pkgFile = File(CUSTOM_ICONPACK_DIR, "$packageName.png")
+            if (pkgFile.exists() && pkgFile.canRead()) {
+                val bmp = BitmapFactory.decodeFile(pkgFile.absolutePath)
+                if (bmp != null) return BitmapDrawable(context.resources, bmp)
+            }
+
+            val actFile = File(CUSTOM_ICONPACK_DIR, "$activityName.png")
+            if (actFile.exists() && actFile.canRead()) {
+                val bmp = BitmapFactory.decodeFile(actFile.absolutePath)
+                if (bmp != null) return BitmapDrawable(context.resources, bmp)
+            }
+
+            // Fallback to procedural custom studio icon
+            return CyberIconGenerator.generateIcon(context, packageName, activityName, packPkg)
+        }
+
+        // 2. Built-in Marvel Cyber HUD Icon Packs
+        if (isBuiltInPack(packPkg)) {
+            return CyberIconGenerator.generateIcon(context, packageName, activityName, packPkg)
+        }
+
+        // 3. Third-party APK Icon Pack
+        val packRes = currentPackResources ?: return null
         val key = "$packageName/$activityName"
         val drawableName = componentToDrawableMap[key] ?: componentToDrawableMap[packageName] ?: return null
 
