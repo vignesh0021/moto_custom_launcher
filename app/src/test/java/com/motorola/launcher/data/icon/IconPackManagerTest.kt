@@ -5,8 +5,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.xmlpull.v1.XmlPullParserFactory
-import java.io.StringReader
 
 /**
  * Unit tests for IconPackManager component normalization, XML parsing, and data models.
@@ -36,44 +34,27 @@ class IconPackManagerTest {
     }
 
     @Test
-    fun testParseXmlPullParserExtractsDrawablesCorrectly() {
-        val xml = """
-            <?xml version="1.0" encoding="utf-8"?>
-            <resources>
-                <item component="ComponentInfo{com.whatsapp/com.whatsapp.Main}" drawable="ic_whatsapp" />
-                <item component="ComponentInfo{com.google.android.youtube/com.google.android.apps.youtube.app.WatchWhileActivity}" drawable="ic_youtube" />
-                <item component="ComponentInfo{com.android.settings/com.android.settings.Settings}" drawable="ic_settings" />
-                <item component="invalid_entry" drawable="ic_none" />
-            </resources>
-        """.trimIndent()
+    fun testComponentMappingExtraction() {
+        val testInputs = listOf(
+            "ComponentInfo{com.whatsapp/com.whatsapp.Main}" to "ic_whatsapp",
+            "ComponentInfo{com.google.android.youtube/com.google.android.apps.youtube.app.WatchWhileActivity}" to "ic_youtube",
+            "ComponentInfo{com.android.settings/com.android.settings.Settings}" to "ic_settings",
+            "invalid_component_without_slash" to "ic_none"
+        )
 
-        val factory = XmlPullParserFactory.newInstance()
-        factory.isNamespaceAware = false
-        val parser = factory.newPullParser()
-        parser.setInput(StringReader(xml))
-
-        // Create a dummy IconPackManager without calling Android Context APIs
         val mapping = mutableMapOf<String, String>()
-        var eventType = parser.eventType
-        while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
-            if (eventType == org.xmlpull.v1.XmlPullParser.START_TAG && parser.name.equals("item", ignoreCase = true)) {
-                val component = parser.getAttributeValue(null, "component")
-                val drawable = parser.getAttributeValue(null, "drawable")
-                if (!component.isNullOrBlank() && !drawable.isNullOrBlank()) {
-                    val normalizedKey = IconPackManager.normalizeComponentString(component)
-                    if (normalizedKey != null) {
-                        mapping[normalizedKey] = drawable
-                    }
-                }
+        for ((rawComponent, drawable) in testInputs) {
+            val normalized = IconPackManager.normalizeComponentString(rawComponent)
+            if (normalized != null) {
+                mapping[normalized] = drawable
             }
-            eventType = parser.next()
         }
 
         assertEquals(3, mapping.size)
         assertEquals("ic_whatsapp", mapping["com.whatsapp/com.whatsapp.Main"])
         assertEquals("ic_youtube", mapping["com.google.android.youtube/com.google.android.apps.youtube.app.WatchWhileActivity"])
         assertEquals("ic_settings", mapping["com.android.settings/com.android.settings.Settings"])
-        assertNull(mapping["invalid_entry"])
+        assertNull(mapping["invalid_component_without_slash"])
     }
 
     @Test
