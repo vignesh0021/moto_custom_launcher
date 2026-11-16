@@ -61,6 +61,7 @@ class IconPackManager(private val context: Context) {
                 pkg == CyberIconGenerator.BUILTIN_JARVIS_TACTICAL ||
                 pkg == CyberIconGenerator.BUILTIN_VIBRANIUM_STEALTH ||
                 pkg == CyberIconGenerator.BUILTIN_ARC_REACTOR ||
+                pkg == CyberIconGenerator.BUILTIN_NEXUS_FORGE ||
                 pkg == CyberIconGenerator.BUILTIN_CUSTOM_SDCARD
             )
         }
@@ -138,6 +139,14 @@ class IconPackManager(private val context: Context) {
         )
         result.add(
             IconPackInfo(
+                packageName = CyberIconGenerator.BUILTIN_NEXUS_FORGE,
+                label = "💠 Nexus Forge",
+                isBuiltIn = true,
+                description = "Obsidian deep-graphite tiles, electric cyan frames & geometric white glyphs"
+            )
+        )
+        result.add(
+            IconPackInfo(
                 packageName = CyberIconGenerator.BUILTIN_CUSTOM_SDCARD,
                 label = "📁 Custom AI Studio Pack",
                 isBuiltIn = true,
@@ -189,6 +198,8 @@ class IconPackManager(private val context: Context) {
             componentToDrawableMap.clear()
             if (iconPackPackage == CyberIconGenerator.BUILTIN_CUSTOM_SDCARD) {
                 loadSdcardAppFilter()
+            } else if (iconPackPackage == CyberIconGenerator.BUILTIN_NEXUS_FORGE) {
+                loadBuiltInNexusForgeAppFilter()
             }
             Log.i(TAG, "Activated built-in icon pack: $iconPackPackage")
             return@withContext true
@@ -242,6 +253,53 @@ class IconPackManager(private val context: Context) {
             Log.w(TAG, "Failed loading custom appfilter.xml: ${e.message}")
         } finally {
             try { inputStream?.close() } catch (_: Throwable) {}
+        }
+    }
+
+    /**
+     * Loads built-in Nexus Forge appfilter.xml from assets.
+     */
+    private fun loadBuiltInNexusForgeAppFilter() {
+        var inputStream: InputStream? = null
+        try {
+            inputStream = context.assets.open("nexus_forge/appfilter.xml")
+            val factory = XmlPullParserFactory.newInstance()
+            factory.isNamespaceAware = false
+            val parser = factory.newPullParser()
+            parser.setInput(inputStream, "UTF-8")
+            val map = parseFromXmlPullParser(parser)
+            componentToDrawableMap.putAll(map)
+            Log.i(TAG, "Loaded ${map.size} mappings for Built-in Nexus Forge")
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed loading built-in nexus_forge/appfilter.xml: ${e.message}")
+        } finally {
+            try { inputStream?.close() } catch (_: Throwable) {}
+        }
+    }
+
+    /**
+     * Maps an app's functional category to standard icon pack asset names.
+     */
+    private fun getCategoryDrawableName(packageName: String, activityName: String): String? {
+        val category = CyberIconGenerator.detectCategory(packageName, activityName)
+        return when (category) {
+            CyberIconGenerator.AppCategory.PHONE -> "phone"
+            CyberIconGenerator.AppCategory.MESSAGE, CyberIconGenerator.AppCategory.CHAT -> "messages"
+            CyberIconGenerator.AppCategory.MAIL -> "mail"
+            CyberIconGenerator.AppCategory.CAMERA -> "camera"
+            CyberIconGenerator.AppCategory.BROWSER -> "browser"
+            CyberIconGenerator.AppCategory.GALLERY -> "gallery"
+            CyberIconGenerator.AppCategory.SETTINGS -> "settings"
+            CyberIconGenerator.AppCategory.CLOCK -> "clock"
+            CyberIconGenerator.AppCategory.CALENDAR -> "calendar"
+            CyberIconGenerator.AppCategory.CALCULATOR -> "calculator"
+            CyberIconGenerator.AppCategory.CONTACTS -> "contacts"
+            CyberIconGenerator.AppCategory.MAPS -> "maps"
+            CyberIconGenerator.AppCategory.YOUTUBE -> "video"
+            CyberIconGenerator.AppCategory.MUSIC -> "music"
+            CyberIconGenerator.AppCategory.FILES -> "files"
+            CyberIconGenerator.AppCategory.STORE -> "store"
+            CyberIconGenerator.AppCategory.GENERIC -> null
         }
     }
 
@@ -315,40 +373,71 @@ class IconPackManager(private val context: Context) {
     fun getAppIcon(packageName: String, activityName: String): Drawable? {
         val packPkg = currentPackPackage ?: return null
 
-        // 1. Custom AI Studio Pack from SD Card
+        // 1. Built-in Nexus Forge (Obsidian & Electric Cyan)
+        if (packPkg == CyberIconGenerator.BUILTIN_NEXUS_FORGE) {
+            val key = "$packageName/$activityName"
+            val drawableName = componentToDrawableMap[key]
+                ?: componentToDrawableMap[packageName]
+                ?: getCategoryDrawableName(packageName, activityName)
+
+            if (drawableName != null) {
+                try {
+                    context.assets.open("nexus_forge/$drawableName.png").use { stream ->
+                        val bmp = BitmapFactory.decodeStream(stream)
+                        if (bmp != null) return BitmapDrawable(context.resources, bmp)
+                    }
+                } catch (_: Throwable) {}
+            }
+            return CyberIconGenerator.generateIcon(context, packageName, activityName, packPkg)
+        }
+
+        // 2. Custom AI Studio Pack from SD Card
         if (packPkg == CyberIconGenerator.BUILTIN_CUSTOM_SDCARD) {
             val key = "$packageName/$activityName"
-            val drawableName = componentToDrawableMap[key] ?: componentToDrawableMap[packageName]
+            val drawableName = componentToDrawableMap[key]
+                ?: componentToDrawableMap[packageName]
+                ?: getCategoryDrawableName(packageName, activityName)
+
             if (drawableName != null) {
-                val customFile = File(CUSTOM_ICONPACK_DIR, "$drawableName.png")
-                if (customFile.exists() && customFile.canRead()) {
-                    val bmp = BitmapFactory.decodeFile(customFile.absolutePath)
-                    if (bmp != null) return BitmapDrawable(context.resources, bmp)
+                val candidatePaths = listOf(
+                    "$drawableName.png",
+                    "${drawableName}_192.png",
+                    "icons/$drawableName.png",
+                    "icons/${drawableName}_192.png"
+                )
+                for (relPath in candidatePaths) {
+                    val customFile = File(CUSTOM_ICONPACK_DIR, relPath)
+                    if (customFile.exists() && customFile.canRead()) {
+                        val bmp = BitmapFactory.decodeFile(customFile.absolutePath)
+                        if (bmp != null) return BitmapDrawable(context.resources, bmp)
+                    }
                 }
             }
 
-            val pkgFile = File(CUSTOM_ICONPACK_DIR, "$packageName.png")
-            if (pkgFile.exists() && pkgFile.canRead()) {
-                val bmp = BitmapFactory.decodeFile(pkgFile.absolutePath)
-                if (bmp != null) return BitmapDrawable(context.resources, bmp)
-            }
-
-            val actFile = File(CUSTOM_ICONPACK_DIR, "$activityName.png")
-            if (actFile.exists() && actFile.canRead()) {
-                val bmp = BitmapFactory.decodeFile(actFile.absolutePath)
-                if (bmp != null) return BitmapDrawable(context.resources, bmp)
+            val pkgCandidates = listOf(
+                "$packageName.png",
+                "icons/$packageName.png",
+                "$activityName.png",
+                "icons/$activityName.png"
+            )
+            for (relPath in pkgCandidates) {
+                val f = File(CUSTOM_ICONPACK_DIR, relPath)
+                if (f.exists() && f.canRead()) {
+                    val bmp = BitmapFactory.decodeFile(f.absolutePath)
+                    if (bmp != null) return BitmapDrawable(context.resources, bmp)
+                }
             }
 
             // Fallback to procedural custom studio icon
             return CyberIconGenerator.generateIcon(context, packageName, activityName, packPkg)
         }
 
-        // 2. Built-in Marvel Cyber HUD Icon Packs
+        // 3. Built-in Marvel Cyber HUD Icon Packs
         if (isBuiltInPack(packPkg)) {
             return CyberIconGenerator.generateIcon(context, packageName, activityName, packPkg)
         }
 
-        // 3. Third-party APK Icon Pack
+        // 4. Third-party APK Icon Pack
         val packRes = currentPackResources ?: return null
         val key = "$packageName/$activityName"
         val drawableName = componentToDrawableMap[key] ?: componentToDrawableMap[packageName] ?: return null

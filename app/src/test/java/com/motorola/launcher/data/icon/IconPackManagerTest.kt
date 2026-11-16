@@ -80,6 +80,7 @@ class IconPackManagerTest {
         assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_JARVIS_TACTICAL))
         assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_VIBRANIUM_STEALTH))
         assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_ARC_REACTOR))
+        assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_NEXUS_FORGE))
         assertTrue(IconPackManager.isBuiltInPack(CyberIconGenerator.BUILTIN_CUSTOM_SDCARD))
 
         assertEquals(false, IconPackManager.isBuiltInPack(null))
@@ -96,6 +97,10 @@ class IconPackManagerTest {
         assertEquals(
             CyberIconGenerator.AppCategory.MESSAGE,
             CyberIconGenerator.detectCategory("com.google.android.apps.messaging", "ConversationListActivity")
+        )
+        assertEquals(
+            CyberIconGenerator.AppCategory.MAIL,
+            CyberIconGenerator.detectCategory("com.google.android.gm", "ConversationListActivityGmail")
         )
         assertEquals(
             CyberIconGenerator.AppCategory.CAMERA,
@@ -130,5 +135,9 @@ class IconPackManagerTest {
 
         val arcPalette = CyberIconGenerator.getPalette(CyberIconGenerator.BUILTIN_ARC_REACTOR)
         assertEquals(0xFFFF1744.toInt(), arcPalette.primaryColor)
+
+        val nexusPalette = CyberIconGenerator.getPalette(CyberIconGenerator.BUILTIN_NEXUS_FORGE)
+        assertEquals(0xFF00E5FF.toInt(), nexusPalette.primaryColor)
+        assertEquals(0xFFFFB300.toInt(), nexusPalette.secondaryColor)
     }
 }

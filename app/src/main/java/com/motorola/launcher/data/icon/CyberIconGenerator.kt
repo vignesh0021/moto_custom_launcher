@@ -21,6 +21,7 @@ object CyberIconGenerator {
     const val BUILTIN_JARVIS_TACTICAL = "com.motorola.launcher.iconpack.jarvis_tactical"
     const val BUILTIN_VIBRANIUM_STEALTH = "com.motorola.launcher.iconpack.vibranium_stealth"
     const val BUILTIN_ARC_REACTOR = "com.motorola.launcher.iconpack.arc_reactor"
+    const val BUILTIN_NEXUS_FORGE = "com.motorola.launcher.iconpack.nexus_forge"
     const val BUILTIN_CUSTOM_SDCARD = "com.motorola.launcher.iconpack.custom_sdcard"
 
     data class IconThemePalette(
@@ -54,6 +55,13 @@ object CyberIconGenerator {
                 bgBottomColor = 0xFF080203.toInt(),
                 gridColor = 0x22FF1744.toInt()
             )
+            BUILTIN_NEXUS_FORGE -> IconThemePalette(
+                primaryColor = 0xFF00E5FF.toInt(),     // Electric Cyan frame
+                secondaryColor = 0xFFFFB300.toInt(),   // Amber detail
+                bgTopColor = 0xFF14171A.toInt(),       // Deep graphite/obsidian
+                bgBottomColor = 0xFF0A0C0E.toInt(),
+                gridColor = 0x2200E5FF.toInt()
+            )
             BUILTIN_CUSTOM_SDCARD -> IconThemePalette(
                 primaryColor = 0xFF00E5FF.toInt(),     // Cyan
                 secondaryColor = 0xFF76FF03.toInt(),   // Neon Lime
@@ -72,7 +80,7 @@ object CyberIconGenerator {
     }
 
     enum class AppCategory {
-        PHONE, MESSAGE, CAMERA, BROWSER, GALLERY, SETTINGS, CLOCK, CALENDAR,
+        PHONE, MESSAGE, MAIL, CAMERA, BROWSER, GALLERY, SETTINGS, CLOCK, CALENDAR,
         CALCULATOR, CONTACTS, MAPS, YOUTUBE, MUSIC, FILES, STORE, CHAT, GENERIC
     }
 
@@ -84,6 +92,7 @@ object CyberIconGenerator {
         return when {
             combined.contains("dialer") || combined.contains("phone") || combined.contains("telecom") -> AppCategory.PHONE
             combined.contains("messaging") || combined.contains("mms") || combined.contains("sms") -> AppCategory.MESSAGE
+            combined.contains("mail") || combined.contains("email") || combined.contains("gmail") -> AppCategory.MAIL
             combined.contains("camera") -> AppCategory.CAMERA
             combined.contains("chrome") || combined.contains("browser") || combined.contains("firefox") || combined.contains("opera") -> AppCategory.BROWSER
             combined.contains("gallery") || combined.contains("photo") -> AppCategory.GALLERY
@@ -206,6 +215,18 @@ object CyberIconGenerator {
                 canvas.drawCircle(cx - 14f, cy - 3f, 3.5f, fillPaint)
                 canvas.drawCircle(cx, cy - 3f, 3.5f, fillPaint)
                 canvas.drawCircle(cx + 14f, cy - 3f, 3.5f, fillPaint)
+            }
+            AppCategory.MAIL -> {
+                val mailRect = RectF(cx - 26f, cy - 18f, cx + 26f, cy + 18f)
+                canvas.drawRoundRect(mailRect, 4f, 4f, strokePaint)
+                val flap = Path().apply {
+                    moveTo(cx - 26f, cy - 18f)
+                    lineTo(cx, cy + 4f)
+                    lineTo(cx + 26f, cy - 18f)
+                }
+                canvas.drawPath(flap, strokePaint)
+                fillPaint.color = palette.secondaryColor
+                canvas.drawCircle(cx, cy + 4f, 2.5f, fillPaint)
             }
             AppCategory.CAMERA -> {
                 val body = RectF(cx - 32f, cy - 16f, cx + 32f, cy + 26f)
