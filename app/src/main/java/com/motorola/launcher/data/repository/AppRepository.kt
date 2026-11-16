@@ -471,17 +471,6 @@ class AppRepository(
         }
     }
 
-    /**
-     * Applies a third-party icon pack or resets to default insignia, re-caching icons.
-     */
-    fun applyIconPack(packageName: String?) {
-        preferences.updateIconPackPackage(packageName)
-        scope.launch {
-            iconPackManager.loadIconPack(packageName)
-            scheduleReload(0)
-        }
-    }
-
     fun onDestroy() {
         try {
             launcherApps?.unregisterCallback(launcherAppsCallback)
