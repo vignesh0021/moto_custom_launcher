@@ -302,6 +302,16 @@ object CyberIconGenerator {
                 canvas.drawCircle(cx - 12f, cy + 18f, 2.5f, fillPaint)
                 canvas.drawCircle(cx + 12f, cy + 18f, 2.5f, fillPaint)
             }
+            AppCategory.CONTACTS -> {
+                canvas.drawCircle(cx, cy - 8f, 12f, strokePaint)
+                val body = Path().apply {
+                    moveTo(cx - 20f, cy + 24f)
+                    cubicTo(cx - 18f, cy + 8f, cx + 18f, cy + 8f, cx + 20f, cy + 24f)
+                }
+                canvas.drawPath(body, strokePaint)
+                fillPaint.color = palette.secondaryColor
+                canvas.drawCircle(cx, cy - 8f, 4f, fillPaint)
+            }
             AppCategory.MAPS -> {
                 canvas.drawCircle(cx, cy, 26f, strokePaint)
                 canvas.drawCircle(cx, cy, 14f, strokePaint.apply { strokeWidth = 2f })
@@ -403,6 +413,13 @@ object CyberIconGenerator {
                     canvas.drawText(firstChar, cx, yPos, textPaint)
                 }
                 // Center holographic ring
+                canvas.drawCircle(cx, cy, 46f, strokePaint.apply { strokeWidth = 2f })
+                fillPaint.color = palette.secondaryColor
+                canvas.drawCircle(cx, cy - 46f, 3f, fillPaint)
+                canvas.drawCircle(cx, cy + 46f, 3f, fillPaint)
+            }
+            else -> {
+                // Fallback to center holographic ring
                 canvas.drawCircle(cx, cy, 46f, strokePaint.apply { strokeWidth = 2f })
                 fillPaint.color = palette.secondaryColor
                 canvas.drawCircle(cx, cy - 46f, 3f, fillPaint)
