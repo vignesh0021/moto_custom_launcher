@@ -80,7 +80,16 @@ class CharacterSheetEngine private constructor(private val context: Context) {
             CompanionStyle.MITHRA -> loadDrawableBitmap(R.drawable.sheet_mithra)
             CompanionStyle.MITHRA_MOM -> loadDrawableBitmap(R.drawable.sheet_mithra_mom)
             CompanionStyle.CUSTOM_SHEET -> {
-                if (customUri.isNotBlank()) loadUriBitmap(customUri) else null
+                if (customUri.isNotBlank()) {
+                    loadUriBitmap(customUri)
+                } else {
+                    val hfFile = java.io.File("/sdcard/Download/companion_sheet_custom.png")
+                    if (hfFile.exists() && hfFile.length() > 1000) {
+                        BitmapFactory.decodeFile(hfFile.absolutePath)
+                    } else {
+                        loadDrawableBitmap(R.drawable.sheet_mithra)
+                    }
+                }
             }
             else -> null
         }) ?: return null
@@ -103,6 +112,42 @@ class CharacterSheetEngine private constructor(private val context: Context) {
             sprites.poses[CharacterPose.SIDE] ?: sprites.poses[CharacterPose.QUARTER] ?: sprites.poses[CharacterPose.FRONT]
         } else {
             sprites.poses[CharacterPose.QUARTER] ?: sprites.poses[CharacterPose.SIDE] ?: sprites.poses[CharacterPose.FRONT]
+        }
+    }
+
+    /**
+     * Returns the real-time lip-sync expression/pose frame synchronized to the active TTS/Neural audio VisemeShape.
+     */
+    fun getLipSyncFrame(
+        sprites: CharacterCompanionSprites,
+        viseme: com.motorola.launcher.system.VisemeShape,
+        isSpeaking: Boolean
+    ): Bitmap? {
+        if (!isSpeaking) {
+            return sprites.poses[CharacterPose.QUARTER]
+                ?: sprites.poses[CharacterPose.FRONT]
+                ?: sprites.expressions[CharacterExpression.HAPPY]
+        }
+        return when (viseme) {
+            com.motorola.launcher.system.VisemeShape.OPEN_A ->
+                sprites.expressions[CharacterExpression.HAPPY]
+                    ?: sprites.poses[CharacterPose.PORTRAIT]
+                    ?: sprites.poses[CharacterPose.QUARTER]
+            com.motorola.launcher.system.VisemeShape.ROUND_O ->
+                sprites.expressions[CharacterExpression.SURPRISED]
+                    ?: sprites.expressions[CharacterExpression.CONFUSED]
+                    ?: sprites.poses[CharacterPose.QUARTER]
+            com.motorola.launcher.system.VisemeShape.WIDE_E ->
+                sprites.poses[CharacterPose.PORTRAIT]
+                    ?: sprites.expressions[CharacterExpression.HAPPY]
+                    ?: sprites.poses[CharacterPose.QUARTER]
+            com.motorola.launcher.system.VisemeShape.CLOSED_M ->
+                sprites.expressions[CharacterExpression.CURIOUS]
+                    ?: sprites.expressions[CharacterExpression.MISCHIEVOUS]
+                    ?: sprites.poses[CharacterPose.QUARTER]
+            com.motorola.launcher.system.VisemeShape.REST ->
+                sprites.poses[CharacterPose.QUARTER]
+                    ?: sprites.expressions[CharacterExpression.CURIOUS]
         }
     }
 
@@ -163,8 +208,14 @@ class CharacterSheetEngine private constructor(private val context: Context) {
         val poses = mutableMapOf<CharacterPose, Bitmap>()
         val expressions = mutableMapOf<CharacterExpression, Bitmap>()
 
-        val splitY = (h * 0.60f).toInt()
-        val bottomH = h - splitY
+        val splitY = (h * 0.62f).toInt()
+        val rawBottomH = h - splitY
+        // Exclude bottom 10% caption text strip ("Happy", "Curious", etc.) on character sheets
+        val bottomH = if (style == CompanionStyle.MITHRA || style == CompanionStyle.CUSTOM_SHEET) {
+            (rawBottomH * 0.88f).toInt().coerceAtLeast(1)
+        } else {
+            rawBottomH
+        }
 
         try {
             // 1. Slice bottom 6 facial expressions (equally spaced across sheet width)

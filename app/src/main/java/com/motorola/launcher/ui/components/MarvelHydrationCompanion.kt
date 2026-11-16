@@ -414,39 +414,103 @@ fun MarvelHydrationCompanion(
                             )
                         }
                     } else if (isCustomSheetCompanion && currentSprites != null) {
-                        // Multi-Frame Walk Cycle & Dynamic Facial Expression Engine
+                        // Multi-Frame Walk Cycle + Real-Time Lip-Sync & Viseme Expression Engine
+                        val currentViseme = voiceManager.currentViseme
+                        val isSpeakingNow = voiceManager.isSpeaking
                         val activeBitmap: Bitmap? = if (isWalking) {
                             sheetEngine.getWalkFrame(currentSprites, walkPhase.value)
                         } else {
                             when (state) {
                                 HydrationState.PROMPT -> {
-                                    currentSprites.poses[CharacterPose.FRONT]
-                                        ?: currentSprites.expressions[CharacterExpression.CURIOUS]
+                                    sheetEngine.getLipSyncFrame(currentSprites, currentViseme, isSpeakingNow)
                                 }
                                 HydrationState.ACCEPTED -> {
-                                    currentSprites.expressions[CharacterExpression.HAPPY]
-                                        ?: currentSprites.poses[CharacterPose.FRONT]
+                                    if (isSpeakingNow) {
+                                        sheetEngine.getLipSyncFrame(currentSprites, currentViseme, true)
+                                    } else {
+                                        currentSprites.expressions[CharacterExpression.HAPPY]
+                                            ?: currentSprites.poses[CharacterPose.QUARTER]
+                                    }
                                 }
                                 HydrationState.REFUSED -> {
                                     currentSprites.expressions[CharacterExpression.UPSET]
-                                        ?: currentSprites.poses[CharacterPose.FRONT]
+                                        ?: currentSprites.poses[CharacterPose.QUARTER]
                                 }
                             }
                         }
 
                         if (activeBitmap != null) {
-                            Image(
-                                bitmap = activeBitmap.asImageBitmap(),
-                                contentDescription = companionStyle.displayName,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        if (isWalking) {
-                                            rotationZ = sin(walkPhase.value) * 3f
+                            val visemeScaleY = if (!isWalking && isSpeakingNow) {
+                                when (currentViseme) {
+                                    com.motorola.launcher.system.VisemeShape.OPEN_A -> 1.035f
+                                    com.motorola.launcher.system.VisemeShape.ROUND_O -> 1.025f
+                                    com.motorola.launcher.system.VisemeShape.WIDE_E -> 1.015f
+                                    else -> 1.0f
+                                }
+                            } else 1.0f
+
+                            val visemeTilt = if (!isWalking && isSpeakingNow) {
+                                when (currentViseme) {
+                                    com.motorola.launcher.system.VisemeShape.OPEN_A -> -1.8f
+                                    com.motorola.launcher.system.VisemeShape.WIDE_E -> 1.8f
+                                    else -> 0f
+                                }
+                            } else 0f
+
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Image(
+                                    bitmap = activeBitmap.asImageBitmap(),
+                                    contentDescription = companionStyle.displayName,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            if (isWalking) {
+                                                rotationZ = sin(walkPhase.value) * 3f
+                                            } else {
+                                                scaleY = visemeScaleY
+                                                rotationZ = visemeTilt
+                                            }
                                         }
+                                )
+
+                                // Glowing animated water glass beside Mithra/Amma while speaking/prompting
+                                if (!isWalking && state != HydrationState.REFUSED) {
+                                    Canvas(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(end = 4.dp, bottom = 18.dp)
+                                            .size(26.dp)
+                                    ) {
+                                        val gw = size.width
+                                        val gh = size.height
+                                        // Outer cyan hydration aura
+                                        drawCircle(
+                                            color = Color(0x4400E5FF),
+                                            radius = gw * 0.65f,
+                                            center = Offset(gw / 2f, gh / 2f)
+                                        )
+                                        // Water fill
+                                        val waterPath = Path().apply {
+                                            moveTo(gw * 0.24f, gh * 0.32f)
+                                            lineTo(gw * 0.76f, gh * 0.32f)
+                                            lineTo(gw * 0.68f, gh * 0.88f)
+                                            lineTo(gw * 0.32f, gh * 0.88f)
+                                            close()
+                                        }
+                                        drawPath(waterPath, color = Color(0xDD00E5FF))
+                                        // Glass rim & walls
+                                        val glassPath = Path().apply {
+                                            moveTo(gw * 0.20f, gh * 0.14f)
+                                            lineTo(gw * 0.80f, gh * 0.14f)
+                                            lineTo(gw * 0.70f, gh * 0.90f)
+                                            lineTo(gw * 0.30f, gh * 0.90f)
+                                            close()
+                                        }
+                                        drawPath(glassPath, color = Color.White.copy(alpha = 0.85f), style = Stroke(width = 1.6.dp.toPx()))
                                     }
-                            )
+                                }
+                            }
                         } else {
                             Canvas(modifier = Modifier.fillMaxSize()) {
                                 drawMarvel3DCharacter(

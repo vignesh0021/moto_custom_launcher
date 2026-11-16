@@ -127,11 +127,12 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
      * Speaks the companion's hydration check notification when they arrive on screen.
      */
     fun speakPrompt(customization: CustomizationSettings) {
-        if (!isInitialized) return
         val style = customization.companionStyle
         val hero = customization.heroProtocol
 
-        configureCompanionVoice(customization)
+        if (isInitialized) {
+            configureCompanionVoice(customization)
+        }
         playArrivalChime()
 
         when (style) {
@@ -171,7 +172,6 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
      * Speaks celebratory dialogue when the user taps "Drank it ✓".
      */
     fun speakAccepted(customization: CustomizationSettings) {
-        if (!isInitialized) return
         val style = customization.companionStyle
         val hero = customization.heroProtocol
 
@@ -181,12 +181,12 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
             CompanionStyle.MITHRA -> {
                 val text = customization.mithraDialogueAccepted.ifBlank { "அப்பா சூப்பர்! நல்லா தண்ணி குடிச்சிட்டீங்க!" }
                 val phonetic = "Appa super! Nalla thanni kudichitteenga!"
-                speakWithLocaleCheck(text, phonetic, customization)
+                speakWithLocaleCheck(text, phonetic, customization, isCelebration = true)
             }
             CompanionStyle.MITHRA_MOM -> {
                 val text = customization.momDialogueAccepted.ifBlank { "ரொம்ப நல்லதுங்க, உடம்பை நல்லா பார்த்துக்கோங்க!" }
                 val phonetic = "Romba nalladhunga, udamba paarthukkoanga!"
-                speakWithLocaleCheck(text, phonetic, customization)
+                speakWithLocaleCheck(text, phonetic, customization, isCelebration = true)
             }
             CompanionStyle.CUSTOM_SHEET -> {
                 val text = customization.customDialogueAccepted.ifBlank { "Awesome! Stay hydrated and energized!" }
@@ -500,34 +500,110 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         engine.setSpeechRate(rate)
     }
 
-    private fun speakWithLocaleCheck(text: String, phoneticFallback: String, customization: CustomizationSettings) {
-        val engine = tts ?: return
+    private var mediaPlayer: android.media.MediaPlayer? = null
+
+    private fun playHuggingFaceTamilAudio(
+        customization: CustomizationSettings,
+        isCelebration: Boolean = false
+    ): Boolean {
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = null
+
+            val isMom = customization.companionStyle == CompanionStyle.MITHRA_MOM
+            val customFile = when {
+                isMom && isCelebration -> java.io.File("/sdcard/Download/amma_tamil_celebrate.wav")
+                isMom -> java.io.File("/sdcard/Download/amma_tamil_tts.wav")
+                isCelebration -> java.io.File("/sdcard/Download/mithra_tamil_celebrate.wav")
+                else -> java.io.File("/sdcard/Download/mithra_tamil_tts.wav")
+            }
+
+            val mp = if (customFile.exists() && customFile.length() > 1000) {
+                android.media.MediaPlayer().apply {
+                    setDataSource(customFile.absolutePath)
+                    prepare()
+                }
+            } else {
+                val resId = when {
+                    isMom && isCelebration -> com.motorola.launcher.R.raw.hf_amma_celebrate
+                    isMom -> com.motorola.launcher.R.raw.hf_amma_prompt
+                    isCelebration -> com.motorola.launcher.R.raw.hf_mithra_celebrate
+                    else -> com.motorola.launcher.R.raw.hf_mithra_prompt
+                }
+                android.media.MediaPlayer.create(context.applicationContext, resId)
+            } ?: return false
+
+            mediaPlayer = mp
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                try {
+                    val pitch = if (isMom) 1.06f else 1.28f
+                    val speed = if (isMom) 0.98f else 1.06f
+                    mp.playbackParams = mp.playbackParams.setPitch(pitch).setSpeed(speed)
+                } catch (_: Throwable) {}
+            }
+
+            mp.setOnCompletionListener { player ->
+                isSpeaking = false
+                visemeJob?.cancel()
+                currentViseme = VisemeShape.REST
+                try {
+                    player.release()
+                } catch (_: Throwable) {}
+                if (mediaPlayer === player) mediaPlayer = null
+            }
+
+            isSpeaking = true
+            startVisemeCadence()
+            mp.start()
+            return true
+        } catch (_: Throwable) {
+            return false
+        }
+    }
+
+    private fun speakWithLocaleCheck(
+        text: String,
+        phoneticFallback: String,
+        customization: CustomizationSettings,
+        isCelebration: Boolean = false
+    ) {
+        val engine = tts
         val isTamil = text.any { it in '\u0B80'..'\u0BFF' }
 
         if (isTamil) {
-            val taLocale = Locale("ta", "IN")
-            val taAvailable = try {
-                engine.isLanguageAvailable(taLocale)
-            } catch (_: Throwable) {
-                TextToSpeech.LANG_NOT_SUPPORTED
+            // 1. Prefer authentic Hugging Face Meta MMS-TTS Neural Tamil voice for Mithra & Amma
+            if (customization.companionStyle == CompanionStyle.MITHRA ||
+                customization.companionStyle == CompanionStyle.MITHRA_MOM
+            ) {
+                if (playHuggingFaceTamilAudio(customization, isCelebration)) {
+                    return
+                }
             }
 
-            if (taAvailable >= TextToSpeech.LANG_AVAILABLE) {
+            // 2. Fallback to Android System Tamil TTS if available
+            if (engine != null) {
+                val taLocale = Locale("ta", "IN")
+                val taAvailable = try {
+                    engine.isLanguageAvailable(taLocale)
+                } catch (_: Throwable) {
+                    TextToSpeech.LANG_NOT_SUPPORTED
+                }
+
+                if (taAvailable >= TextToSpeech.LANG_AVAILABLE) {
+                    try {
+                        engine.language = taLocale
+                        applyAcoustics(customization)
+                        speak(text)
+                        return
+                    } catch (_: Throwable) {}
+                }
                 try {
-                    engine.language = taLocale
-                    // Critical: reapply acoustics AFTER setting language, because setLanguage resets pitch & rate
+                    engine.language = Locale.US
                     applyAcoustics(customization)
-                    speak(text)
-                    return
                 } catch (_: Throwable) {}
+                speak(phoneticFallback)
             }
-            // Fallback to English phonetic pronunciation so the speaker still sounds clear
-            try {
-                engine.language = Locale.US
-                applyAcoustics(customization)
-            } catch (_: Throwable) {}
-            speak(phoneticFallback)
-        } else {
+        } else if (engine != null) {
             try {
                 engine.language = Locale.US
                 applyAcoustics(customization)
@@ -569,6 +645,11 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         visemeJob?.cancel()
         isSpeaking = false
         currentViseme = VisemeShape.REST
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+        } catch (_: Throwable) {}
+        mediaPlayer = null
         tts?.stop()
     }
 
@@ -576,6 +657,11 @@ class CompanionVoiceManager(private val context: Context) : TextToSpeech.OnInitL
         visemeJob?.cancel()
         isSpeaking = false
         currentViseme = VisemeShape.REST
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+        } catch (_: Throwable) {}
+        mediaPlayer = null
         tts?.stop()
         tts?.shutdown()
         tts = null
