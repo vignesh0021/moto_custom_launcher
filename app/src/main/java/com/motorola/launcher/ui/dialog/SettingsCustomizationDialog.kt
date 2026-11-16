@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import com.motorola.launcher.system.notification.NotificationBadgeManager
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -93,6 +94,7 @@ fun SettingsCustomizationDialog(
     preferences: LauncherPreferences,
     customization: CustomizationSettings,
     onDismiss: () -> Unit,
+    onOpenIconPacks: () -> Unit = {},
     onTriggerHydrationTest: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -221,6 +223,113 @@ fun SettingsCustomizationDialog(
                     Text(
                         text = "OPEN ▶",
                         color = currentTheme.colors.bright,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Quick Action: Third-Party Icon Packs (Nova, Apex, Total Launcher)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(currentTheme.colors.primary.copy(alpha = 0.15f))
+                        .border(1.2.dp, currentTheme.colors.primary, RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (customization.hapticFeedback) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                }
+                                onOpenIconPacks()
+                            }
+                        )
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(text = "🎨", fontSize = 20.sp)
+                        Column {
+                            Text(
+                                text = "THIRD-PARTY ICON PACKS",
+                                color = TextPrimary,
+                                fontSize = 11.5.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.0.sp
+                            )
+                            Text(
+                                text = if (!customization.iconPackPackage.isNullOrBlank()) customization.iconPackPackage!! else "Marvel Cyber Insignias (Default)",
+                                color = TextSecondary,
+                                fontSize = 9.sp,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                    Text(
+                        text = "CHANGE ▶",
+                        color = currentTheme.colors.bright,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Quick Action: Notification Badges & Dots Access
+                val isNotifAccessGranted = remember { NotificationBadgeManager.isNotificationAccessGranted(context) }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 14.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (customization.notificationBadgesEnabled) Color(0x33FF1744) else Color(0x22000000))
+                        .border(1.2.dp, if (customization.notificationBadgesEnabled) Color(0xFFFF1744) else currentTheme.colors.hudBorder, RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (!isNotifAccessGranted) {
+                                    NotificationBadgeManager.openNotificationAccessSettings(context)
+                                } else {
+                                    preferences.toggleNotificationBadges(!customization.notificationBadgesEnabled)
+                                }
+                            }
+                        )
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(text = "🔔", fontSize = 20.sp)
+                        Column {
+                            Text(
+                                text = "LIVE NOTIFICATION BADGES",
+                                color = TextPrimary,
+                                fontSize = 11.5.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.0.sp
+                            )
+                            Text(
+                                text = if (!isNotifAccessGranted) "Permission required: Tap to grant access" else if (customization.notificationBadgesEnabled) "Active on home apps and drawer" else "Disabled",
+                                color = if (!isNotifAccessGranted) Color(0xFFFF9100) else TextSecondary,
+                                fontSize = 9.sp
+                            )
+                        }
+                    }
+                    Text(
+                        text = if (!isNotifAccessGranted) "GRANT ▶" else if (customization.notificationBadgesEnabled) "ENABLED" else "OFF",
+                        color = if (!isNotifAccessGranted) Color(0xFFFF9100) else currentTheme.colors.bright,
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold

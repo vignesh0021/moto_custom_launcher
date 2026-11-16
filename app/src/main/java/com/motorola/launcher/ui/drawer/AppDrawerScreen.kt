@@ -85,6 +85,7 @@ fun AppDrawerScreen(
     onCreateFolderClick: () -> Unit = {},
     onCustomizeQuickAccessClick: () -> Unit,
     onCloseDrawer: () -> Unit,
+    notificationCounts: Map<String, Int> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
@@ -395,7 +396,8 @@ fun AppDrawerScreen(
                                 onClick = { onAppClick(appItem) },
                                 onLongClick = { onAppLongClick(appItem) },
                                 iconSize = 48.dp,
-                                showLabel = true
+                                showLabel = true,
+                                notificationCount = notificationCounts[appItem.packageName] ?: 0
                             )
                         }
                     }

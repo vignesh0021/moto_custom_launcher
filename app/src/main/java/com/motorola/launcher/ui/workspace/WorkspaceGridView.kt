@@ -62,6 +62,7 @@ fun WorkspaceGridView(
     onItemLongClick: (WorkspaceItemEntity) -> Unit,
     onEmptySpaceLongClick: (page: Int, cellX: Int, cellY: Int) -> Unit,
     onEmptySpaceDoubleTap: () -> Unit = {},
+    notificationCounts: Map<String, Int> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -120,7 +121,8 @@ fun WorkspaceGridView(
                                 onClick = { onAppClick(app) },
                                 onLongClick = { onAppLongClick(app) },
                                 showLabel = true,
-                                iconSize = 48.dp
+                                iconSize = 48.dp,
+                                notificationCount = notificationCounts[app.packageName] ?: 0
                             )
                         }
                     }

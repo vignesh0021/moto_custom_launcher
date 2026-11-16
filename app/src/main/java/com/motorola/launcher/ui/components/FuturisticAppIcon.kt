@@ -61,7 +61,8 @@ fun FuturisticAppIcon(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     iconSize: Dp = 50.dp,
-    showLabel: Boolean = true
+    showLabel: Boolean = true,
+    notificationCount: Int = 0
 ) {
     val view = LocalView.current
     val customization = LocalCustomization.current
@@ -283,6 +284,27 @@ fun FuturisticAppIcon(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "💼", fontSize = 9.sp)
+                }
+            }
+
+            // Live Notification Badge Indicator
+            if (customization.notificationBadgesEnabled && notificationCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFFF1744))
+                        .border(1.dp, Color.White, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
                 }
             }
         }

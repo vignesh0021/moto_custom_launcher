@@ -79,7 +79,9 @@ class LauncherPreferences(context: Context) {
             gestureWorldEnabled = prefs.getBoolean(KEY_GESTURE_WORLD, true),
             dailyStoryMode = prefs.getBoolean(KEY_DAILY_STORY, true),
             cinematicEntranceEnabled = prefs.getBoolean(KEY_CINEMATIC_ENTRANCE, true),
-            useVideoCompanion = prefs.getBoolean(KEY_USE_VIDEO_COMPANION, false)
+            useVideoCompanion = prefs.getBoolean(KEY_USE_VIDEO_COMPANION, false),
+            iconPackPackage = prefs.getString(KEY_ICON_PACK_PACKAGE, null),
+            notificationBadgesEnabled = prefs.getBoolean(KEY_NOTIFICATION_BADGES, true)
         )
     }
 
@@ -171,6 +173,21 @@ class LauncherPreferences(context: Context) {
     fun updateIconStyle(preset: IconStylePreset) {
         prefs.edit().putString(KEY_ICON_STYLE, preset.id).apply()
         _customization.value = _customization.value.copy(iconStyle = preset)
+    }
+
+    fun updateIconPack(packageName: String?) {
+        if (packageName.isNullOrBlank()) {
+            prefs.edit().remove(KEY_ICON_PACK_PACKAGE).apply()
+            _customization.value = _customization.value.copy(iconPackPackage = null)
+        } else {
+            prefs.edit().putString(KEY_ICON_PACK_PACKAGE, packageName).apply()
+            _customization.value = _customization.value.copy(iconPackPackage = packageName)
+        }
+    }
+
+    fun toggleNotificationBadges(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIFICATION_BADGES, enabled).apply()
+        _customization.value = _customization.value.copy(notificationBadgesEnabled = enabled)
     }
 
     fun updateAnimationLevel(preset: AnimationLevelPreset) {
@@ -380,5 +397,7 @@ class LauncherPreferences(context: Context) {
         private const val KEY_DAILY_STORY = "daily_story_mode"
         private const val KEY_CINEMATIC_ENTRANCE = "cinematic_entrance_enabled"
         private const val KEY_USE_VIDEO_COMPANION = "use_video_companion"
+        private const val KEY_ICON_PACK_PACKAGE = "icon_pack_package"
+        private const val KEY_NOTIFICATION_BADGES = "notification_badges_enabled"
     }
 }

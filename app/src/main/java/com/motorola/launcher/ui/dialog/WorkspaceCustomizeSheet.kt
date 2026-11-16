@@ -47,6 +47,8 @@ fun WorkspaceCustomizeSheet(
     onAddBuiltinWidget: (page: Int, cellX: Int, cellY: Int, type: String, title: String) -> Unit,
     onAddAppShortcut: (page: Int, cellX: Int, cellY: Int) -> Unit,
     onRemoveItem: (id: Long) -> Unit,
+    onOpenIconPacks: () -> Unit = {},
+    onOpenNotificationSettings: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val marvelTheme = LocalMarvelTheme.current
@@ -164,6 +166,30 @@ fun WorkspaceCustomizeSheet(
                     subtitle = "Place an installed application icon onto this grid cell",
                     onClick = {
                         onAddAppShortcut(targetPage, targetCellX, targetCellY)
+                        onDismiss()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Option 4: Apply Icon Pack
+                WorkspaceActionRow(
+                    title = "APPLY ICON PACK",
+                    subtitle = "Select third-party icon packs (Nova, Apex, Total Launcher compatible)",
+                    onClick = {
+                        onOpenIconPacks()
+                        onDismiss()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Option 5: Notification Badges & Dots
+                WorkspaceActionRow(
+                    title = "NOTIFICATION BADGES & ACCESS",
+                    subtitle = "Configure live unread notification badges on apps and grant access",
+                    onClick = {
+                        onOpenNotificationSettings()
                         onDismiss()
                     }
                 )

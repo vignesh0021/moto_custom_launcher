@@ -15,6 +15,7 @@ import android.os.UserManager
 import android.provider.Settings
 import android.util.Log
 import com.motorola.launcher.data.icon.HardwareIconManager
+import com.motorola.launcher.data.icon.IconPackManager
 import com.motorola.launcher.ui.model.AppItem
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -52,7 +53,8 @@ import kotlinx.coroutines.withContext
  */
 class AppRepository(
     private val context: Context,
-    val iconManager: HardwareIconManager = HardwareIconManager(context)
+    val iconManager: HardwareIconManager = HardwareIconManager(context),
+    val iconPackManager: IconPackManager = IconPackManager(context)
 ) {
     val preferences = LauncherPreferences(context)
 
@@ -285,14 +287,19 @@ class AppRepository(
         hydrationJob?.cancel()
         hydrationJob = scope.launch(Dispatchers.Default) {
             try {
+                val activeIconPack = preferences.customization.value.iconPackPackage
+                iconPackManager.loadIconPack(activeIconPack)
+
                 val currentList = items.toMutableList()
                 var pendingBatchUpdates = 0
 
                 for (i in currentList.indices) {
                     val item = currentList[i]
                     if (item.iconBitmap == null) {
-                        val bmp = iconManager.loadIcon(item.iconCacheKey) {
-                            try {
+                        val cacheKey = if (!activeIconPack.isNullOrBlank()) "${activeIconPack}_${item.iconCacheKey}" else item.iconCacheKey
+                        val bmp = iconManager.loadIcon(cacheKey) {
+                            val packDrawable = iconPackManager.getAppIcon(item.packageName, item.activityName)
+                            packDrawable ?: try {
                                 val user = item.userHandle ?: Process.myUserHandle()
                                 val activities = launcherApps?.getActivityList(item.packageName, user)
                                 val actInfo = activities?.firstOrNull { it.componentName == item.componentName }
@@ -323,6 +330,16 @@ class AppRepository(
                 Log.e(TAG, "Error in hydrateIconsInBackground: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Applies a third-party icon pack or reverts to default.
+     * Clears in-memory icon caches and triggers immediate asynchronous re-hydration.
+     */
+    fun applyIconPack(packageName: String?) {
+        preferences.updateIconPack(packageName)
+        iconManager.clearMemory()
+        scheduleReload()
     }
 
     /**
@@ -451,6 +468,17 @@ class AppRepository(
             context.startActivity(intent)
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to request uninstall: ${t.message}")
+        }
+    }
+
+    /**
+     * Applies a third-party icon pack or resets to default insignia, re-caching icons.
+     */
+    fun applyIconPack(packageName: String?) {
+        preferences.updateIconPackPackage(packageName)
+        scope.launch {
+            iconPackManager.loadIconPack(packageName)
+            scheduleReload(0)
         }
     }
 

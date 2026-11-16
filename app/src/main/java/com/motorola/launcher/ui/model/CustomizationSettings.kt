@@ -326,6 +326,9 @@ data class CustomizationSettings(
     val gestureWorldEnabled: Boolean = true,
     val dailyStoryMode: Boolean = true,
     val cinematicEntranceEnabled: Boolean = true,
-    val useVideoCompanion: Boolean = false
+    val useVideoCompanion: Boolean = false,
+    // P1 Icon Pack & Notification Badges
+    val iconPackPackage: String? = null,
+    val notificationBadgesEnabled: Boolean = true
 )
 

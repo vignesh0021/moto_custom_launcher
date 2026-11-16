@@ -49,6 +49,8 @@ import com.motorola.launcher.ui.dialog.HydrationSettingsDialog
 import com.motorola.launcher.ui.dialog.JarvisDashboardSheet
 import com.motorola.launcher.ui.dialog.QuickAccessCustomizerDialog
 import com.motorola.launcher.ui.dialog.QuickControlsSheet
+import com.motorola.launcher.system.notification.NotificationBadgeManager
+import com.motorola.launcher.ui.dialog.IconPackPickerDialog
 import com.motorola.launcher.ui.dialog.SettingsCustomizationDialog
 import com.motorola.launcher.ui.dialog.WorkspaceCustomizeSheet
 import com.motorola.launcher.ui.drawer.AppDrawerScreen
@@ -94,6 +96,7 @@ fun LauncherRoot(
     val dockKeys by repository.preferences.dockKeys.collectAsState()
     val customization by repository.preferences.customization.collectAsState()
     val telemetry by telemetryManager.telemetryState.collectAsState()
+    val notificationCounts by NotificationBadgeManager.badgeCounts.collectAsState()
 
     // Workspace and Folders repository
     val workspaceRepo = remember(context) { workspaceRepository ?: WorkspaceRepository(context) }
@@ -182,6 +185,7 @@ fun LauncherRoot(
     var showFolderDialog by remember { mutableStateOf<AppFolderEntity?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showShortcutPicker by remember { mutableStateOf(false) }
+    var showIconPackDialog by remember { mutableStateOf(false) }
 
     val orchestrator = remember(context) { FamilyCompanionOrchestrator.getInstance(context) }
     val todayIntakeMl by orchestrator.todayTotalMl.collectAsState()
@@ -275,7 +279,8 @@ fun LauncherRoot(
 
     // Back button closes active sheets/dialogs or app drawer in priority order
     BackHandler(
-        enabled = showHydrationSettings ||
+        enabled = showIconPackDialog ||
+                showHydrationSettings ||
                 showHydrationDashboard ||
                 showHydrationReminder ||
                 selectedAppContextApp != null ||
@@ -290,6 +295,7 @@ fun LauncherRoot(
                 gestureState.isDrawerVisible
     ) {
         when {
+            showIconPackDialog -> showIconPackDialog = false
             showHydrationSettings -> showHydrationSettings = false
             showHydrationDashboard -> showHydrationDashboard = false
             showHydrationReminder -> showHydrationReminder = false
@@ -310,6 +316,7 @@ fun LauncherRoot(
     // Reset back to main workspace when system Home button is pressed
     LaunchedEffect(homePressEvents) {
         homePressEvents?.collect {
+            showIconPackDialog = false
             showHydrationSettings = false
             showHydrationDashboard = false
             showHydrationReminder = false
@@ -387,6 +394,7 @@ fun LauncherRoot(
                 folders = folders,
                 telemetry = telemetry,
                 appWidgetHost = appWidgetHost,
+                notificationCounts = notificationCounts,
                 progressProvider = { gestureState.progress },
                 onAppClick = { item -> launchAppWithAnimation(item) },
                 onAppLongClick = { item -> selectedAppContextApp = item },
@@ -429,6 +437,7 @@ fun LauncherRoot(
                     apps = displayedDrawerApps,
                     quickAccessApps = quickAccessApps,
                     folders = folders,
+                    notificationCounts = notificationCounts,
                     searchQuery = searchQuery,
                     onQueryChange = { searchQuery = it },
                     onClearQuery = { searchQuery = "" },
@@ -471,6 +480,7 @@ fun LauncherRoot(
                 SettingsCustomizationDialog(
                     preferences = repository.preferences,
                     customization = customization,
+                    onOpenIconPacks = { showIconPackDialog = true },
                     onDismiss = { showCustomization = false },
                     onTriggerHydrationTest = {
                         showCustomization = false
@@ -514,7 +524,28 @@ fun LauncherRoot(
                             workspaceRepo.removeWorkspaceItem(id)
                         }
                     },
+                    onOpenIconPacks = {
+                        showCustomizeSheet = false
+                        showIconPackDialog = true
+                    },
+                    onOpenNotificationSettings = {
+                        NotificationBadgeManager.openNotificationAccessSettings(context)
+                    },
                     onDismiss = { showCustomizeSheet = false }
+                )
+            }
+
+            // Icon Pack Picker Dialog
+            if (showIconPackDialog) {
+                val iconPacks = remember { repository.iconPackManager.getInstalledIconPacks() }
+                IconPackPickerDialog(
+                    iconPacks = iconPacks,
+                    selectedPackage = customization.iconPackPackage,
+                    onSelectIconPack = { pkg ->
+                        repository.applyIconPack(pkg)
+                        showIconPackDialog = false
+                    },
+                    onDismiss = { showIconPackDialog = false }
                 )
             }
 

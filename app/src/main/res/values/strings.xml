@@ -3,4 +3,5 @@
     <string name="search_apps">Search apps and shortcuts…</string>
     <string name="no_apps_found">No apps found</string>
     <string name="accessibility_service_description">Enables double-tap to lock screen and swipe gestures for Moto Marvel Launcher.</string>
+    <string name="notification_listener_service_label">Moto Marvel Notification Badges</string>
 </resources>

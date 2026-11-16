@@ -90,6 +90,7 @@ fun WorkspaceScreen(
     onOpenQuickControls: () -> Unit,
     onOpenCustomization: () -> Unit,
     onOpenSystemSettings: () -> Unit = {},
+    notificationCounts: Map<String, Int> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -231,7 +232,8 @@ fun WorkspaceScreen(
                                         onAppLongClick(item)
                                     },
                                     iconSize = 40.dp,
-                                    showLabel = false
+                                    showLabel = false,
+                                    notificationCount = notificationCounts[item.packageName] ?: 0
                                 )
                             }
                         }
@@ -304,6 +306,7 @@ fun WorkspaceScreen(
                                 onItemLongClick = onItemLongClick,
                                 onEmptySpaceLongClick = onEmptySpaceLongClick,
                                 onEmptySpaceDoubleTap = onEmptySpaceDoubleTap,
+                                notificationCounts = notificationCounts,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -323,6 +326,7 @@ fun WorkspaceScreen(
                                 onItemLongClick = onItemLongClick,
                                 onEmptySpaceLongClick = onEmptySpaceLongClick,
                                 onEmptySpaceDoubleTap = onEmptySpaceDoubleTap,
+                                notificationCounts = notificationCounts,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -389,7 +393,8 @@ fun WorkspaceScreen(
                                         onAppLongClick(item)
                                     },
                                     iconSize = dockIconSize,
-                                    showLabel = true
+                                    showLabel = true,
+                                    notificationCount = notificationCounts[item.packageName] ?: 0
                                 )
                             }
                         }
