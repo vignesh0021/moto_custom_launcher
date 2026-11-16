@@ -7,7 +7,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import com.motorola.launcher.system.SystemTelemetryState
 import com.motorola.launcher.ui.components.subtleGlobalRotation
+import com.motorola.launcher.ui.workspace.Marvel3DPageIndicator
 import com.motorola.launcher.ui.model.AppItem
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
 import kotlinx.collections.immutable.ImmutableList
 
 /**
@@ -38,7 +46,8 @@ fun MultiPageWorkspace(
         onPageChanged(pagerState.currentPage)
     }
 
-    HorizontalPager(
+    Box(modifier = Modifier.fillMaxSize()) {
+        HorizontalPager(
         state = pagerState,
         modifier = modifier.subtleGlobalRotation()
     ) { page ->
@@ -63,5 +72,13 @@ fun MultiPageWorkspace(
                 onAppLongClick = onAppLongClick
             )
         }
+    }
+        Marvel3DPageIndicator(
+            pageCount = pageCount,
+            currentPage = pagerState.currentPage,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 8.dp)
+        )
     }
 }

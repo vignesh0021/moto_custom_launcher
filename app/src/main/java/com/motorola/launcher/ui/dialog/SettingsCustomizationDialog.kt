@@ -779,6 +779,15 @@ fun SettingsCustomizationDialog(
                     android.util.Log.i("Launcher", "Import backup requested")
                     view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                 }) { Text("Import Backup") }
+                TextButton(onClick = {
+                    try {
+                        val intent = android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    } catch (_: Throwable) {}
+                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                }) { Text("Notification Access") }
+
             }
 
 

@@ -470,6 +470,11 @@ private fun HeroSpeechBubble(
             // Character dialogue from sheet personalities
             val (titleText, bodyText) = when (state) {
                 HydrationState.PROMPT -> when {
+                    // Family Tamil hydration campaign (Mithra)
+                    true -> Pair(
+                        "அப்பா, தண்ணி குடிங்க 💧",
+                        "மித்ரா சொல்றாங்க: அப்பா தண்ணி குடிங்க!"
+                    )
                     style != CompanionStyle.HERO_SUIT -> Pair(
                         "Hydration check, bestie 💧",
                         "Big ideas need a little water. Take a sip?"
@@ -509,6 +514,11 @@ private fun HeroSpeechBubble(
                     else -> Pair("Hydration check! 💧", "Time to drink a glass of water!")
                 }
                 HydrationState.ACCEPTED -> when {
+                    true -> Pair(
+                        "சூப்பர் அப்பா! 🎉",
+                        "மித்ரா சந்தோஷம்! தண்ணி குடிச்சிட்டீங்க!"
+                    )
+                    
                     hero == MarvelHeroProtocol.HULK && style == CompanionStyle.HERO_SUIT -> Pair(
                         "HULK SMASH DEHYDRATION! 💚",
                         "Good job friend! Hulk happy! Muscles stay strong!"

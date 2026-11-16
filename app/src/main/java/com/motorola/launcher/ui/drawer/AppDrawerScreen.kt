@@ -48,7 +48,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.motorola.launcher.system.NotificationBadgeService
 import com.motorola.launcher.ui.components.FuturisticAppIcon
+import androidx.compose.runtime.collectAsState
 import com.motorola.launcher.ui.model.AppItem
 import com.motorola.launcher.ui.theme.LocalCustomization
 import com.motorola.launcher.ui.theme.StarkDarkSurface
@@ -285,8 +287,10 @@ fun AppDrawerScreen(
                         key = { it.componentKey },
                         contentType = { "app_icon" }
                     ) { appItem ->
+                        val badges by NotificationBadgeService.badgeCounts.collectAsState()
                         FuturisticAppIcon(
                             app = appItem,
+                            badgeCount = badges[appItem.packageName] ?: 0,
                             onClick = { onAppClick(appItem) },
                             onLongClick = { onAppLongClick(appItem) },
                             iconSize = 48.dp,
