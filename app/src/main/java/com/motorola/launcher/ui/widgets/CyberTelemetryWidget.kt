@@ -45,6 +45,11 @@ fun CyberTelemetryWidget(
     val marvelTheme = LocalMarvelTheme.current
     val shape = chamferedShape(cutSize = 12f)
 
+    val ramUsedMb = if (telemetry.ramUsedBytes > 0) telemetry.ramUsedBytes / (1024 * 1024) else 0L
+    val ramTotalMb = if (telemetry.ramTotalBytes > 0) telemetry.ramTotalBytes / (1024 * 1024) else 0L
+    val tempText = if (telemetry.batteryTempCelsius.isNaN()) "--" else String.format(Locale.US, "%.1f", telemetry.batteryTempCelsius)
+    val refreshRateText = if (telemetry.refreshRateHz > 0) "${telemetry.refreshRateHz}Hz" else "60Hz"
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -112,11 +117,6 @@ fun CyberTelemetryWidget(
                 }
 
                 // Temp & RAM
-                val ramUsedMb = if (telemetry.ramUsedBytes > 0) telemetry.ramUsedBytes / (1024 * 1024) else 0L
-                val ramTotalMb = if (telemetry.ramTotalBytes > 0) telemetry.ramTotalBytes / (1024 * 1024) else 0L
-                val tempText = if (telemetry.batteryTempCelsius.isNaN()) "--" else String.format(Locale.US, "%.1f", telemetry.batteryTempCelsius)
-                val refreshRateText = if (telemetry.refreshRateHz > 0) "${telemetry.refreshRateHz}Hz" else "60Hz"
-
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$tempText°C",
