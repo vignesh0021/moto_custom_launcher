@@ -198,6 +198,8 @@ class AppRepository(
 
                         // Check instant memory cache hit for icon; if absent, will load in background
                         val cachedBitmap = iconManager.peekMemory(iconKey)
+                        val isWork = user != Process.myUserHandle()
+                        val isHidden = preferences.isHiddenApp(componentKey)
                         appItems.add(
                             AppItem(
                                 componentKey = componentKey,
@@ -206,7 +208,9 @@ class AppRepository(
                                 label = label,
                                 userHandle = user,
                                 iconCacheKey = iconKey,
-                                iconBitmap = cachedBitmap
+                                iconBitmap = cachedBitmap,
+                                isWorkProfile = isWork,
+                                isHidden = isHidden
                             )
                         )
                     } catch (c: CancellationException) {

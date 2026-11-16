@@ -270,6 +270,21 @@ fun FuturisticAppIcon(
                     )
                 }
             }
+
+            // Work Profile Badge Indicator
+            if (app.isWorkProfile) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .align(Alignment.BottomEnd)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFF1E88E5))
+                        .border(1.dp, Color.White, RoundedCornerShape(4.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "💼", fontSize = 9.sp)
+                }
+            }
         }
 
         if (showLabel) {

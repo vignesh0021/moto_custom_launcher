@@ -17,7 +17,9 @@ data class AppItem(
     val label: String,
     val userHandle: UserHandle? = null,
     val iconCacheKey: String,
-    val iconBitmap: ImageBitmap? = null
+    val iconBitmap: ImageBitmap? = null,
+    val isWorkProfile: Boolean = false,
+    val isHidden: Boolean = false
 ) {
     val componentName: ComponentName
         get() = ComponentName(packageName, activityName)

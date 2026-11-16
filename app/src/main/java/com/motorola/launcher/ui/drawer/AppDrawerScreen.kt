@@ -72,6 +72,7 @@ private val DRAWER_TABS = listOf("ALL", "FAVORITES", "RECENT")
 fun AppDrawerScreen(
     apps: ImmutableList<AppItem>,
     quickAccessApps: ImmutableList<AppItem>,
+    folders: List<com.motorola.launcher.data.db.AppFolderEntity> = emptyList(),
     searchQuery: String,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
@@ -79,6 +80,8 @@ fun AppDrawerScreen(
     maxDragPx: Float,
     onAppClick: (AppItem) -> Unit,
     onAppLongClick: (AppItem) -> Unit,
+    onFolderClick: (com.motorola.launcher.data.db.AppFolderEntity) -> Unit = {},
+    onCreateFolderClick: () -> Unit = {},
     onCustomizeQuickAccessClick: () -> Unit,
     onCloseDrawer: () -> Unit,
     modifier: Modifier = Modifier
@@ -91,15 +94,23 @@ fun AppDrawerScreen(
     val view = LocalView.current
     var selectedTab by remember { mutableStateOf("ALL") }
 
-    // Filter apps based on active tab
+    val hasWorkApps = remember(apps) { apps.any { it.isWorkProfile } }
+    val drawerTabs = remember(hasWorkApps) {
+        if (hasWorkApps) listOf("ALL", "WORK", "FOLDERS", "FAVORITES", "RECENT")
+        else listOf("ALL", "FOLDERS", "FAVORITES", "RECENT")
+    }
+
+    // Filter apps based on active tab and hidden status
     val displayedApps = remember(apps, selectedTab, searchQuery, quickAccessApps) {
+        val nonHidden = apps.filter { !it.isHidden }
         if (searchQuery.isNotEmpty()) {
-            apps
+            nonHidden
         } else {
             when (selectedTab) {
-                "FAVORITES" -> quickAccessApps.ifEmpty { apps.take(8).toImmutableList() }
-                "RECENT" -> apps.take(12).toImmutableList()
-                else -> apps
+                "WORK" -> nonHidden.filter { it.isWorkProfile }.toImmutableList()
+                "FAVORITES" -> quickAccessApps.filter { !it.isHidden }.ifEmpty { nonHidden.take(8) }.toImmutableList()
+                "RECENT" -> nonHidden.take(12).toImmutableList()
+                else -> nonHidden.filter { !it.isWorkProfile }.toImmutableList()
             }
         }
     }
@@ -207,7 +218,7 @@ fun AppDrawerScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Category Tabs: ALL | FAVORITES | RECENT
+            // Category Tabs: Dynamic (ALL, WORK, FOLDERS, FAVORITES, RECENT)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -217,7 +228,7 @@ fun AppDrawerScreen(
                     .padding(3.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                for (tab in DRAWER_TABS) {
+                for (tab in drawerTabs) {
                     val isSelected = tab == selectedTab
                     Box(
                         modifier = Modifier
@@ -243,10 +254,10 @@ fun AppDrawerScreen(
                         Text(
                             text = tab,
                             color = if (isSelected) Color.Black else TextSecondary,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            letterSpacing = 1.0.sp
+                            letterSpacing = 0.5.sp
                         )
                     }
                 }
@@ -265,33 +276,127 @@ fun AppDrawerScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 4-Column Adaptive App Grid with Fast Scrubber
+            // 4-Column Adaptive App Grid or Folder Grid
             Box(modifier = Modifier.fillMaxSize()) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    state = gridState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 4.dp,
-                        end = 28.dp, // Space for right-side A-Z scrubber
-                        top = 4.dp,
-                        bottom = 32.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = displayedApps,
-                        key = { it.componentKey },
-                        contentType = { "app_icon" }
-                    ) { appItem ->
-                        FuturisticAppIcon(
-                            app = appItem,
-                            onClick = { onAppClick(appItem) },
-                            onLongClick = { onAppLongClick(appItem) },
-                            iconSize = 48.dp,
-                            showLabel = true
-                        )
+                if (selectedTab == "FOLDERS" && searchQuery.isEmpty()) {
+                    // Folders View
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        state = gridState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Create Folder Action Card
+                        item {
+                            val cardShape = RoundedCornerShape(16.dp)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(108.dp)
+                                    .clip(cardShape)
+                                    .background(Color(0x33000000))
+                                    .border(1.dp, marvelTheme.colors.primary.copy(alpha = 0.6f), cardShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = onCreateFolderClick
+                                    )
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "+", color = marvelTheme.colors.bright, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                                    Text(text = "NEW FOLDER", color = marvelTheme.colors.primary, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // Existing Folders
+                        items(folders, key = { it.id }) { folder ->
+                            val cardShape = RoundedCornerShape(16.dp)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(108.dp)
+                                    .clip(cardShape)
+                                    .background(Color(0x4408101E))
+                                    .border(1.dp, marvelTheme.colors.hudBorder, cardShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { onFolderClick(folder) }
+                                    )
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(marvelTheme.colors.primary.copy(alpha = 0.2f))
+                                            .border(1.dp, marvelTheme.colors.primary, RoundedCornerShape(10.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = folder.keyList.size.toString(),
+                                            color = marvelTheme.colors.bright,
+                                            fontSize = 16.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = folder.name.uppercase(),
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = "${folder.keyList.size} apps",
+                                        color = TextSecondary,
+                                        fontSize = 9.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4),
+                        state = gridState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 4.dp,
+                            end = 28.dp, // Space for right-side A-Z scrubber
+                            top = 4.dp,
+                            bottom = 32.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            items = displayedApps,
+                            key = { it.componentKey },
+                            contentType = { "app_icon" }
+                        ) { appItem ->
+                            FuturisticAppIcon(
+                                app = appItem,
+                                onClick = { onAppClick(appItem) },
+                                onLongClick = { onAppLongClick(appItem) },
+                                iconSize = 48.dp,
+                                showLabel = true
+                            )
+                        }
                     }
                 }
 

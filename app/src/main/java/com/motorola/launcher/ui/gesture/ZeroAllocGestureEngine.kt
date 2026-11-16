@@ -168,8 +168,9 @@ fun rememberDrawerGestureState(
  */
 fun Modifier.drawerSwipeGesture(
     state: DrawerGestureState,
-    maxDragPx: Float
-): Modifier = this.pointerInput(state, maxDragPx) {
+    maxDragPx: Float,
+    onSwipeDown: (() -> Unit)? = null
+): Modifier = this.pointerInput(state, maxDragPx, onSwipeDown) {
     val touchSlop = viewConfiguration.touchSlop
     awaitEachGesture {
         // Main pass: children (buttons, dock icons) get first chance at the event.
@@ -202,13 +203,19 @@ fun Modifier.drawerSwipeGesture(
                 if (kotlin.math.abs(totalDy) > touchSlop &&
                     kotlin.math.abs(totalDy) > kotlin.math.abs(totalDx) * 1.2f
                 ) {
-                    // Only now does this become a drawer swipe
+                    if (totalDy > touchSlop && state.progress <= 0.05f) {
+                        // Downward swipe on workspace: expand notifications panel
+                        onSwipeDown?.invoke()
+                        change.consume()
+                        break
+                    }
+                    // Upward swipe: becomes drawer gesture
                     dragging = true
                     state.onDragStart(change.uptimeMillis, currentY)
                     lastY = currentY
                     change.consume()
                 } else if (kotlin.math.abs(totalDx) > touchSlop) {
-                    // Horizontal movement: not ours (edge swipe / scrolling)
+                    // Horizontal movement: belongs to HorizontalPager pages
                     break
                 }
                 continue

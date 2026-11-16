@@ -24,8 +24,15 @@ class LauncherPreferences(context: Context) {
     private val _dockKeys = MutableStateFlow<List<String>>(loadDockKeys())
     val dockKeys: StateFlow<List<String>> = _dockKeys.asStateFlow()
 
+    private val _hiddenKeys = MutableStateFlow<Set<String>>(loadHiddenKeys())
+    val hiddenKeys: StateFlow<Set<String>> = _hiddenKeys.asStateFlow()
+
     private val _customization = MutableStateFlow(loadCustomization())
     val customization: StateFlow<CustomizationSettings> = _customization.asStateFlow()
+
+    private fun loadHiddenKeys(): Set<String> {
+        return prefs.getStringSet(KEY_HIDDEN_APPS, null) ?: emptySet()
+    }
 
     private fun loadQuickAccessKeys(): Set<String> {
         return prefs.getStringSet(KEY_QUICK_ACCESS, null) ?: emptySet()
@@ -316,7 +323,28 @@ class LauncherPreferences(context: Context) {
         _customization.value = _customization.value.copy(useVideoCompanion = enabled)
     }
 
+    fun isHiddenApp(componentKey: String): Boolean {
+        return _hiddenKeys.value.contains(componentKey)
+    }
+
+    fun toggleHideApp(componentKey: String) {
+        val current = _hiddenKeys.value.toMutableSet()
+        if (current.contains(componentKey)) {
+            current.remove(componentKey)
+        } else {
+            current.add(componentKey)
+        }
+        prefs.edit().putStringSet(KEY_HIDDEN_APPS, current).apply()
+        _hiddenKeys.value = current
+    }
+
+    fun unhideAllApps() {
+        prefs.edit().remove(KEY_HIDDEN_APPS).apply()
+        _hiddenKeys.value = emptySet()
+    }
+
     companion object {
+        private const val KEY_HIDDEN_APPS = "hidden_app_keys"
         private const val KEY_THEME_ID = "theme_id"
         private const val KEY_SOUND_EFFECTS = "sound_effects_enabled"
         private const val KEY_QUICK_ACCESS = "quick_access_keys"

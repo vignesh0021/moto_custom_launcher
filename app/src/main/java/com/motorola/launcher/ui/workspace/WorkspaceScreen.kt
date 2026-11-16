@@ -1,9 +1,11 @@
 package com.motorola.launcher.ui.workspace
 
+import android.appwidget.AppWidgetHost
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,12 +16,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,21 +36,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.motorola.launcher.data.db.AppFolderEntity
+import com.motorola.launcher.data.db.WorkspaceItemEntity
 import com.motorola.launcher.system.SystemTelemetryState
 import com.motorola.launcher.ui.components.FuturisticAppIcon
 import com.motorola.launcher.ui.components.chamferedShape
 import com.motorola.launcher.ui.model.AppItem
-import com.motorola.launcher.ui.components.QuantumResonanceOverlay
 import com.motorola.launcher.ui.theme.LocalCustomization
-import com.motorola.launcher.ui.theme.StarkEmerald
-import com.motorola.launcher.ui.theme.TextPrimary
-import com.motorola.launcher.ui.theme.TextSecondary
 import kotlinx.collections.immutable.ImmutableList
 
 /** Soft drop shadow so HUD text stays legible on any wallpaper (including bright photos). */
@@ -60,17 +63,28 @@ internal val HudGlass = Color(0x9903070E)
 /**
  * Main Home Workspace: "STARK OS — JARVIS Edition".
  *
- * Layout is intentionally minimal: clock on top, Arc Reactor in the centre,
- * two telemetry chips + two action pills below it, and the dock at the bottom.
- * Nothing floats beside the reactor, so the wallpaper and the core stay clear.
+ * Upgraded to a multi-page workspace:
+ * - Page 0: Productivity Overview (Weather & Calendar HUD widgets, quick apps)
+ * - Page 1 (Center Home): Signature Marvel Arc Reactor Command Center, Frameless Minimal Clock & Diagnostics
+ * - Page 2: Media & Entertainment (Audio System HUD, Quantum Telemetry, Android native widgets)
+ * - Bottom Dock: Persists across all pages with up to 6 custom apps
+ * - Double-Tap to Sleep/Lock Screen
  */
 @Composable
 fun WorkspaceScreen(
     dockApps: ImmutableList<AppItem>,
+    workspaceItems: List<WorkspaceItemEntity> = emptyList(),
+    allApps: List<AppItem> = emptyList(),
+    folders: List<AppFolderEntity> = emptyList(),
     telemetry: SystemTelemetryState,
+    appWidgetHost: AppWidgetHost? = null,
     progressProvider: () -> Float,
     onAppClick: (AppItem) -> Unit,
     onAppLongClick: (AppItem) -> Unit,
+    onFolderClick: (AppFolderEntity) -> Unit = {},
+    onItemLongClick: (WorkspaceItemEntity) -> Unit = {},
+    onEmptySpaceLongClick: (page: Int, cellX: Int, cellY: Int) -> Unit = { _, _, _ -> },
+    onEmptySpaceDoubleTap: () -> Unit = {},
     onOpenDrawerClick: () -> Unit,
     onOpenDiagnostics: () -> Unit,
     onOpenQuickControls: () -> Unit,
@@ -83,6 +97,9 @@ fun WorkspaceScreen(
     val marvelTheme = com.motorola.launcher.ui.theme.LocalMarvelTheme.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    // Multi-page Pager State: 3 pages (0 = Overview, 1 = Center Core, 2 = Media/Widgets)
+    val pagerState = rememberPagerState(initialPage = 1) { 3 }
 
     // Pillar 5: Cinematic Entrance Sequence
     val entranceProgress = remember { androidx.compose.animation.core.Animatable(if (customization.cinematicEntranceEnabled) 0f else 1f) }
@@ -222,30 +239,112 @@ fun WorkspaceScreen(
                 }
             }
         } else {
-            // Portrait Layout (Standard)
+            // Portrait Layout (Standard) with Multi-Page Workspace Grid
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // TOP: Frameless Minimalist HUD Clock (does not block wallpaper)
-                DigitalClock(
-                    telemetry = telemetry,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                // Workspace Pages Pager (Page 0 = Productivity, Page 1 = Core, Page 2 = Media)
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) { page ->
+                    when (page) {
+                        1 -> {
+                            // Page 1: Central Marvel Command Core (Arc Reactor + Clock)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onDoubleTap = { onEmptySpaceDoubleTap() },
+                                            onLongPress = { onEmptySpaceLongClick(1, 2, 2) }
+                                        )
+                                    }
+                                    .padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                DigitalClock(
+                                    telemetry = telemetry,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
 
-                // CENTRE: Compact All-In-One Marvel Command Core
-                Box(contentAlignment = Alignment.Center) {
-                    ReactorCore(
-                        telemetry = telemetry,
-                        onCoreClick = onOpenDiagnostics,
-                        onOpenQuickControls = onOpenQuickControls,
-                        onOpenCustomization = onOpenCustomization,
-                        onOpenSystemSettings = onOpenSystemSettings,
-                        size = 168.dp
-                    )
+                                Box(contentAlignment = Alignment.Center) {
+                                    ReactorCore(
+                                        telemetry = telemetry,
+                                        onCoreClick = onOpenDiagnostics,
+                                        onOpenQuickControls = onOpenQuickControls,
+                                        onOpenCustomization = onOpenCustomization,
+                                        onOpenSystemSettings = onOpenSystemSettings,
+                                        size = 168.dp
+                                    )
+                                }
+
+                                HudPill(text = "DIAGNOSTICS", onClick = tap(onOpenDiagnostics))
+                            }
+                        }
+                        0 -> {
+                            // Page 0: Productivity Overview Grid (Weather, Calendar, App shortcuts)
+                            WorkspaceGridView(
+                                pageIndex = 0,
+                                items = workspaceItems.filter { it.pageIndex == 0 },
+                                allApps = allApps,
+                                folders = folders,
+                                telemetry = telemetry,
+                                appWidgetHost = appWidgetHost,
+                                onAppClick = onAppClick,
+                                onAppLongClick = onAppLongClick,
+                                onFolderClick = onFolderClick,
+                                onOpenDiagnostics = onOpenDiagnostics,
+                                onItemLongClick = onItemLongClick,
+                                onEmptySpaceLongClick = onEmptySpaceLongClick,
+                                onEmptySpaceDoubleTap = onEmptySpaceDoubleTap,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        2 -> {
+                            // Page 2: Media & Entertainment Grid (Audio System, Telemetry, Widgets)
+                            WorkspaceGridView(
+                                pageIndex = 2,
+                                items = workspaceItems.filter { it.pageIndex == 2 },
+                                allApps = allApps,
+                                folders = folders,
+                                telemetry = telemetry,
+                                appWidgetHost = appWidgetHost,
+                                onAppClick = onAppClick,
+                                onAppLongClick = onAppLongClick,
+                                onFolderClick = onFolderClick,
+                                onOpenDiagnostics = onOpenDiagnostics,
+                                onItemLongClick = onItemLongClick,
+                                onEmptySpaceLongClick = onEmptySpaceLongClick,
+                                onEmptySpaceDoubleTap = onEmptySpaceDoubleTap,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+
+                // Page Indicator Dots
+                Row(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (p in 0 until 3) {
+                        val isSelected = pagerState.currentPage == p
+                        Box(
+                            modifier = Modifier
+                                .width(if (isSelected) 14.dp else 5.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(if (isSelected) marvelTheme.colors.primary else Color(0x44FFFFFF))
+                        )
+                    }
                 }
 
                 // BOTTOM: Drawer trigger + dock
@@ -257,7 +356,7 @@ fun WorkspaceScreen(
                 ) {
                     HudPill(text = marvelTheme.dockStyle.pillText, onClick = tap(onOpenDrawerClick))
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     val dockShape = chamferedShape(cutSize = marvelTheme.dockStyle.cutCornerSize)
                     val displayedDock = dockApps.take(6)

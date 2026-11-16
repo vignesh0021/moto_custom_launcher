@@ -7,6 +7,8 @@ abstract class LauncherDatabase {
     abstract fun appDao(): AppDao
     abstract fun waterIntakeDao(): WaterIntakeDao
     abstract fun hydrationSettingsDao(): HydrationSettingsDao
+    abstract fun workspaceItemDao(): WorkspaceItemDao
+    abstract fun appFolderDao(): AppFolderDao
 
     companion object {
         @Volatile

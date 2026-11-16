@@ -1,5 +1,9 @@
 package com.motorola.launcher.ui
 
+import android.appwidget.AppWidgetHost
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -24,8 +28,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.motorola.launcher.data.db.AppFolderEntity
+import com.motorola.launcher.data.db.WorkspaceItemEntity
 import com.motorola.launcher.data.repository.AppRepository
+import com.motorola.launcher.data.repository.WorkspaceRepository
 import com.motorola.launcher.system.ContextualLauncherEngine
+import com.motorola.launcher.system.LauncherAccessibilityService
 import com.motorola.launcher.system.LauncherSoundManager
 import com.motorola.launcher.system.SystemTelemetryManager
 import com.motorola.launcher.system.WallpaperZoomController
@@ -33,12 +41,16 @@ import com.motorola.launcher.system.companion.FamilyCompanionOrchestrator
 import com.motorola.launcher.ui.components.AnimatedWaterGlassIndicator
 import com.motorola.launcher.ui.components.MarvelHydrationCompanion
 import com.motorola.launcher.ui.dialog.AppContextDialog
+import com.motorola.launcher.ui.dialog.AppShortcutPickerDialog
+import com.motorola.launcher.ui.dialog.CreateFolderDialog
+import com.motorola.launcher.ui.dialog.FolderDialog
 import com.motorola.launcher.ui.dialog.HydrationDashboardSheet
 import com.motorola.launcher.ui.dialog.HydrationSettingsDialog
 import com.motorola.launcher.ui.dialog.JarvisDashboardSheet
 import com.motorola.launcher.ui.dialog.QuickAccessCustomizerDialog
 import com.motorola.launcher.ui.dialog.QuickControlsSheet
 import com.motorola.launcher.ui.dialog.SettingsCustomizationDialog
+import com.motorola.launcher.ui.dialog.WorkspaceCustomizeSheet
 import com.motorola.launcher.ui.drawer.AppDrawerScreen
 import com.motorola.launcher.ui.gesture.GestureWorldRotationEffect
 import com.motorola.launcher.ui.gesture.drawerSwipeGesture
@@ -56,8 +68,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Root Composable orchestrating the 5 STARK OS views:
- * 1. Home Workspace with procedural Arc Reactor
- * 2. Adaptive Holographic App Drawer with categories & search
+ * 1. Home Workspace with procedural Arc Reactor and multi-page widget grid
+ * 2. Adaptive Holographic App Drawer with categories, folders & search
  * 3. System Dashboard with real device measurements
  * 4. Radial Quick Controls Menu & Toggles
  * 5. Settings & Customization (Theme, Wallpapers, Icons, Animations, Toggles)
@@ -65,17 +77,35 @@ import kotlinx.coroutines.launch
 @Composable
 fun LauncherRoot(
     repository: AppRepository,
+    workspaceRepository: WorkspaceRepository? = null,
+    appWidgetHost: AppWidgetHost? = null,
+    onRequestAddNativeWidget: ((page: Int, cellX: Int, cellY: Int) -> Unit)? = null,
     wallpaperZoomController: WallpaperZoomController,
     telemetryManager: SystemTelemetryManager,
     homePressEvents: kotlinx.coroutines.flow.SharedFlow<Unit>? = null,
     hydrationDashboardEvents: kotlinx.coroutines.flow.SharedFlow<Unit>? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     val allApps by repository.appsState.collectAsState()
     val quickAccessKeys by repository.preferences.quickAccessKeys.collectAsState()
     val dockKeys by repository.preferences.dockKeys.collectAsState()
     val customization by repository.preferences.customization.collectAsState()
     val telemetry by telemetryManager.telemetryState.collectAsState()
+
+    // Workspace and Folders repository
+    val workspaceRepo = remember(context) { workspaceRepository ?: WorkspaceRepository(context) }
+    val workspaceItems by workspaceRepo.workspaceItems.collectAsState()
+    val folders by workspaceRepo.appFolders.collectAsState()
+
+    // Seed defaults if empty
+    LaunchedEffect(allApps) {
+        if (allApps.isNotEmpty()) {
+            workspaceRepo.seedDefaultsIfEmpty(allApps)
+        }
+    }
 
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by remember(searchQuery) { repository.searchApps(searchQuery) }.collectAsState(initial = emptyList<AppItem>().toImmutableList())
@@ -104,10 +134,8 @@ fun LauncherRoot(
         }
     }
 
-    val coroutineScope = rememberCoroutineScope()
     var launchingApp by remember { mutableStateOf<AppItem?>(null) }
     val launchAnimationProgress = remember { Animatable(0f) }
-    val context = androidx.compose.ui.platform.LocalContext.current
     val isReducedMotion = remember(customization, context) {
         com.motorola.launcher.system.LauncherFeedback.isReducedMotion(context, customization)
     }
@@ -145,6 +173,16 @@ fun LauncherRoot(
     var showHydrationDashboard by remember { mutableStateOf(false) }
     var showHydrationSettings by remember { mutableStateOf(false) }
 
+    // Workspace & Folder Dialog States
+    var showCustomizeSheet by remember { mutableStateOf(false) }
+    var customizeTargetPage by remember { mutableStateOf(0) }
+    var customizeTargetCellX by remember { mutableStateOf(0) }
+    var customizeTargetCellY by remember { mutableStateOf(0) }
+    var selectedWorkspaceItem by remember { mutableStateOf<WorkspaceItemEntity?>(null) }
+    var showFolderDialog by remember { mutableStateOf<AppFolderEntity?>(null) }
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var showShortcutPicker by remember { mutableStateOf(false) }
+
     val orchestrator = remember(context) { FamilyCompanionOrchestrator.getInstance(context) }
     val todayIntakeMl by orchestrator.todayTotalMl.collectAsState()
     val progressRatio by orchestrator.progressRatio.collectAsState()
@@ -164,7 +202,7 @@ fun LauncherRoot(
         }
     }
 
-    // Marvel Hydration Companion check with user-configurable interval (works both locked & unlocked)
+    // Marvel Hydration Companion check with user-configurable interval
     LaunchedEffect(customization.hydrationReminderEnabled, customization.hydrationIntervalMinutes, hydrationSettings.enabled) {
         if (!customization.hydrationReminderEnabled && !hydrationSettings.enabled) return@LaunchedEffect
         while (true) {
@@ -175,7 +213,6 @@ fun LauncherRoot(
                 val keyguard = context.getSystemService(android.content.Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
                 val isLocked = keyguard?.isKeyguardLocked == true
                 if (isLocked) {
-                    // Phone is locked: post high-priority lock-screen public notification immediately
                     val dialogue = orchestrator.getNextDialogue()
                     com.motorola.launcher.system.hydration.HydrationNotificationHelper.showReminderNotification(
                         context = context,
@@ -186,7 +223,7 @@ fun LauncherRoot(
                 }
                 showHydrationReminder = true
             }
-            delay(30000L) // Lightweight 30-second ticker, zero battery drain
+            delay(30000L)
         }
     }
 
@@ -199,7 +236,7 @@ fun LauncherRoot(
     )
     GestureWorldRotationEffect(gestureWorldState)
 
-    // Pillar 2: Autonomous Context Adaptation (Time, Battery, In-Transit)
+    // Pillar 2: Autonomous Context Adaptation
     val contextualEngine = remember { ContextualLauncherEngine(context) }
     DisposableEffect(contextualEngine) {
         contextualEngine.start()
@@ -219,7 +256,7 @@ fun LauncherRoot(
         }
     }
 
-    // Pillar 3: Daily Family Story Mode (Mithra & Mithra Mom story rotation, skipping non-family)
+    // Pillar 3: Daily Family Story Mode
     LaunchedEffect(customization.dailyStoryMode) {
         if (customization.dailyStoryMode) {
             val cal = java.util.Calendar.getInstance()
@@ -246,6 +283,10 @@ fun LauncherRoot(
                 showJarvisDashboard ||
                 showQuickControls ||
                 showCustomization ||
+                showCustomizeSheet ||
+                showFolderDialog != null ||
+                showCreateFolderDialog ||
+                showShortcutPicker ||
                 gestureState.isDrawerVisible
     ) {
         when {
@@ -257,12 +298,16 @@ fun LauncherRoot(
             showJarvisDashboard -> showJarvisDashboard = false
             showQuickControls -> showQuickControls = false
             showCustomization -> showCustomization = false
+            showCustomizeSheet -> showCustomizeSheet = false
+            showFolderDialog != null -> showFolderDialog = null
+            showCreateFolderDialog -> showCreateFolderDialog = false
+            showShortcutPicker -> showShortcutPicker = false
             searchQuery.isNotEmpty() -> searchQuery = ""
             else -> gestureState.close()
         }
     }
 
-    // Reset back to main workspace when system Home button (center click / nav bar) is pressed
+    // Reset back to main workspace when system Home button is pressed
     LaunchedEffect(homePressEvents) {
         homePressEvents?.collect {
             showHydrationSettings = false
@@ -273,6 +318,10 @@ fun LauncherRoot(
             showJarvisDashboard = false
             showQuickControls = false
             showCustomization = false
+            showCustomizeSheet = false
+            showFolderDialog = null
+            showCreateFolderDialog = false
+            showShortcutPicker = false
             searchQuery = ""
             gestureState.close()
         }
@@ -285,7 +334,13 @@ fun LauncherRoot(
 
             val gestureModifier = Modifier
                 .fillMaxSize()
-                .drawerSwipeGesture(gestureState, maxDragPx)
+                .drawerSwipeGesture(
+                    state = gestureState,
+                    maxDragPx = maxDragPx,
+                    onSwipeDown = {
+                        LauncherAccessibilityService.expandNotifications(context)
+                    }
+                )
 
             val workspaceGestureModifier = gestureModifier
                 .heroGestureTransform(
@@ -317,28 +372,50 @@ fun LauncherRoot(
                     }
                 )
 
-            // Background: selected HUD wallpaper, or readability scrim over the user's photo
+            // Background: selected HUD wallpaper
             StarkWallpaperLayer(
                 preset = customization.wallpaper,
                 accent = customization.themeColor.primary,
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Screen 1: Workspace Layer (STARK OS Command Center)
+            // Screen 1: Multi-Page Workspace Layer
             WorkspaceScreen(
                 dockApps = dockApps,
+                workspaceItems = workspaceItems,
+                allApps = allApps,
+                folders = folders,
                 telemetry = telemetry,
+                appWidgetHost = appWidgetHost,
                 progressProvider = { gestureState.progress },
                 onAppClick = { item -> launchAppWithAnimation(item) },
                 onAppLongClick = { item -> selectedAppContextApp = item },
+                onFolderClick = { folder -> showFolderDialog = folder },
+                onItemLongClick = { item ->
+                    selectedWorkspaceItem = item
+                    customizeTargetPage = item.pageIndex
+                    customizeTargetCellX = item.cellX
+                    customizeTargetCellY = item.cellY
+                    showCustomizeSheet = true
+                },
+                onEmptySpaceLongClick = { page, cx, cy ->
+                    selectedWorkspaceItem = null
+                    customizeTargetPage = page
+                    customizeTargetCellX = cx
+                    customizeTargetCellY = cy
+                    showCustomizeSheet = true
+                },
+                onEmptySpaceDoubleTap = {
+                    LauncherAccessibilityService.lockScreen(context)
+                },
                 onOpenDrawerClick = { gestureState.open() },
                 onOpenDiagnostics = { showJarvisDashboard = true },
                 onOpenQuickControls = { showQuickControls = true },
                 onOpenCustomization = { showCustomization = true },
                 onOpenSystemSettings = {
                     try {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS).apply {
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                        val intent = Intent(Settings.ACTION_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                         }
                         context.startActivity(intent)
                     } catch (_: Throwable) {}
@@ -346,11 +423,12 @@ fun LauncherRoot(
                 modifier = workspaceGestureModifier
             )
 
-            // Screen 2: App Drawer Layer (Active when drawer is visible or transitioning)
+            // Screen 2: App Drawer Layer
             if (gestureState.isDrawerVisible) {
                 AppDrawerScreen(
                     apps = displayedDrawerApps,
                     quickAccessApps = quickAccessApps,
+                    folders = folders,
                     searchQuery = searchQuery,
                     onQueryChange = { searchQuery = it },
                     onClearQuery = { searchQuery = "" },
@@ -361,6 +439,8 @@ fun LauncherRoot(
                         gestureState.close()
                     },
                     onAppLongClick = { item -> selectedAppContextApp = item },
+                    onFolderClick = { folder -> showFolderDialog = folder },
+                    onCreateFolderClick = { showCreateFolderDialog = true },
                     onCustomizeQuickAccessClick = { showQuickAccessCustomizer = true },
                     onCloseDrawer = { gestureState.close() },
                     modifier = Modifier.fillMaxSize()
@@ -375,7 +455,7 @@ fun LauncherRoot(
                 )
             }
 
-            // Screen 4: Quick Controls Radial HUD & Toggles Modal
+            // Screen 4: Quick Controls Radial HUD
             if (showQuickControls) {
                 QuickControlsSheet(
                     onDismiss = { showQuickControls = false },
@@ -399,7 +479,101 @@ fun LauncherRoot(
                 )
             }
 
-            // Small Animated Water Glass Indicator (Beside Companion on Home Screen)
+            // Workspace Customize Sheet (Add widgets, app shortcuts, remove items)
+            if (showCustomizeSheet) {
+                WorkspaceCustomizeSheet(
+                    targetPage = customizeTargetPage,
+                    targetCellX = customizeTargetCellX,
+                    targetCellY = customizeTargetCellY,
+                    selectedItem = selectedWorkspaceItem,
+                    onAddNativeWidget = { page, cx, cy ->
+                        onRequestAddNativeWidget?.invoke(page, cx, cy)
+                    },
+                    onAddBuiltinWidget = { page, cx, cy, type, title ->
+                        coroutineScope.launch {
+                            workspaceRepo.addWorkspaceItem(
+                                pageIndex = page,
+                                cellX = cx,
+                                cellY = cy,
+                                spanX = 5,
+                                spanY = 2,
+                                itemType = WorkspaceItemEntity.TYPE_WIDGET_BUILTIN,
+                                extraData = type,
+                                customTitle = title
+                            )
+                        }
+                    },
+                    onAddAppShortcut = { page, cx, cy ->
+                        customizeTargetPage = page
+                        customizeTargetCellX = cx
+                        customizeTargetCellY = cy
+                        showShortcutPicker = true
+                    },
+                    onRemoveItem = { id ->
+                        coroutineScope.launch {
+                            workspaceRepo.removeWorkspaceItem(id)
+                        }
+                    },
+                    onDismiss = { showCustomizeSheet = false }
+                )
+            }
+
+            // Folder Viewer Dialog
+            showFolderDialog?.let { folder ->
+                FolderDialog(
+                    folder = folder,
+                    allApps = allApps,
+                    onAppClick = { item ->
+                        launchAppWithAnimation(item)
+                        showFolderDialog = null
+                    },
+                    onAppLongClick = { item ->
+                        selectedAppContextApp = item
+                    },
+                    onDeleteFolder = {
+                        coroutineScope.launch {
+                            workspaceRepo.deleteFolder(folder.id)
+                        }
+                    },
+                    onDismiss = { showFolderDialog = null }
+                )
+            }
+
+            // Create Folder Dialog
+            if (showCreateFolderDialog) {
+                CreateFolderDialog(
+                    onCreateFolder = { name ->
+                        coroutineScope.launch {
+                            workspaceRepo.createFolder(name)
+                        }
+                    },
+                    onDismiss = { showCreateFolderDialog = false }
+                )
+            }
+
+            // App Shortcut Picker Dialog
+            if (showShortcutPicker) {
+                AppShortcutPickerDialog(
+                    apps = allApps.filter { !it.isHidden },
+                    onSelectApp = { app ->
+                        coroutineScope.launch {
+                            workspaceRepo.addWorkspaceItem(
+                                pageIndex = customizeTargetPage,
+                                cellX = customizeTargetCellX,
+                                cellY = customizeTargetCellY,
+                                spanX = 1,
+                                spanY = 1,
+                                itemType = WorkspaceItemEntity.TYPE_APP,
+                                componentKey = app.componentKey,
+                                customTitle = app.label
+                            )
+                        }
+                    },
+                    onDismiss = { showShortcutPicker = false }
+                )
+            }
+
+            // Small Animated Water Glass Indicator
             if (customization.hydrationReminderEnabled && !gestureState.isDrawerVisible) {
                 Box(
                     modifier = Modifier
@@ -450,25 +624,44 @@ fun LauncherRoot(
                     coroutineScope.launch {
                         orchestrator.recordWaterIntake(250, "COMPANION_PROMPT")
                     }
-                    repository.preferences.recordWaterAccepted()
+                    showHydrationReminder = false
                 },
                 onRefuseWater = {
-                    repository.preferences.recordWaterRefused()
+                    showHydrationReminder = false
                 },
                 onDismiss = {
                     showHydrationReminder = false
                 }
             )
 
-            // App Context Menu (App Info, Quick Access, Dock, Uninstall)
+            // App Context Menu (App Info, Quick Access, Dock, Hide, Pin to Workspace, Uninstall)
             selectedAppContextApp?.let { app ->
                 AppContextDialog(
                     app = app,
                     isQuickAccess = repository.preferences.isQuickAccess(app.componentKey),
                     isDockPinned = repository.preferences.isDockPinned(app.componentKey),
+                    isHidden = repository.preferences.isHiddenApp(app.componentKey),
                     onOpenAppInfo = { repository.openAppInfo(app) },
                     onToggleQuickAccess = { repository.preferences.toggleQuickAccess(app.componentKey) },
                     onToggleDock = { repository.preferences.toggleDock(app.componentKey) },
+                    onToggleHideApp = {
+                        repository.preferences.toggleHideApp(app.componentKey)
+                        repository.scheduleReload(0)
+                    },
+                    onPinToWorkspace = {
+                        coroutineScope.launch {
+                            workspaceRepo.addWorkspaceItem(
+                                pageIndex = 0,
+                                cellX = 0,
+                                cellY = 4,
+                                spanX = 1,
+                                spanY = 1,
+                                itemType = WorkspaceItemEntity.TYPE_APP,
+                                componentKey = app.componentKey,
+                                customTitle = app.label
+                            )
+                        }
+                    },
                     onRequestUninstall = { repository.requestUninstall(app) },
                     onDismiss = { selectedAppContextApp = null }
                 )
@@ -485,7 +678,6 @@ fun LauncherRoot(
             }
 
             // High-Impact Quantum Holographic App Launch Transition
-            // Fires strictly on tap (0% CPU at idle, zero battery consumption when not launching)
             if (launchAnimationProgress.value > 0f) {
                 val p = launchAnimationProgress.value
                 val primaryColor = customization.heroProtocol.primary
@@ -495,7 +687,6 @@ fun LauncherRoot(
                     val center = Offset(size.width / 2f, size.height / 2f)
                     val maxRadius = kotlin.math.max(size.width, size.height)
 
-                    // Quantum warp expanding shockwave
                     val ringRadius = maxRadius * p
                     val alpha = (1f - p).coerceIn(0f, 1f)
 
@@ -513,7 +704,6 @@ fun LauncherRoot(
                         style = Stroke(width = (3f * (1f - p)).coerceAtLeast(1f))
                     )
 
-                    // Iris shutter flash
                     drawCircle(
                         color = Color.Black.copy(alpha = (p * 0.65f).coerceIn(0f, 0.65f)),
                         radius = maxRadius,

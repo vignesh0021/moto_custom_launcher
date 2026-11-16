@@ -55,9 +55,12 @@ fun AppContextDialog(
     app: AppItem,
     isQuickAccess: Boolean,
     isDockPinned: Boolean,
+    isHidden: Boolean = false,
     onOpenAppInfo: () -> Unit,
     onToggleQuickAccess: () -> Unit,
     onToggleDock: () -> Unit,
+    onToggleHideApp: () -> Unit = {},
+    onPinToWorkspace: () -> Unit = {},
     onRequestUninstall: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -229,7 +232,38 @@ fun AppContextDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Action 4: Uninstall App
+                // Action 4: Pin to Home Screen Workspace
+                ContextMenuItem(
+                    icon = "📱",
+                    title = "Add to Home Screen",
+                    subtitle = "Place app shortcut on home workspace page",
+                    accentColor = MotoCyanAccent,
+                    onClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onPinToWorkspace()
+                        onDismiss()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Action 5: Hide / Unhide App
+                ContextMenuItem(
+                    icon = if (isHidden) "👁️" else "🔒",
+                    title = if (isHidden) "Unhide App" else "Hide App",
+                    subtitle = if (isHidden) "Restore app visibility in drawer" else "Hide application from the app drawer",
+                    badgeText = if (isHidden) "HIDDEN" else null,
+                    accentColor = if (isHidden) MotoElectricViolet else MotoCyanAccent,
+                    onClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onToggleHideApp()
+                        onDismiss()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Action 6: Uninstall App
                 ContextMenuItem(
                     icon = "🗑️",
                     title = "Uninstall App",

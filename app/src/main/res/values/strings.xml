@@ -2,4 +2,5 @@
     <string name="app_name">Moto Ultra Launcher</string>
     <string name="search_apps">Search apps and shortcuts…</string>
     <string name="no_apps_found">No apps found</string>
+    <string name="accessibility_service_description">Enables double-tap to lock screen and swipe gestures for Moto Marvel Launcher.</string>
 </resources>
