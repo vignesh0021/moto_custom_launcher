@@ -53,7 +53,7 @@ fun FolderDialog(
     onDismiss: () -> Unit
 ) {
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 16.dp)
+    val shape = chamferedShape(cutSize = 16f)
     val folderApps = remember(folder, allApps) {
         val appMap = allApps.associateBy { it.componentKey }
         folder.keyList.mapNotNull { appMap[it] }

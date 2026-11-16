@@ -40,7 +40,7 @@ fun CyberWeatherWidget(
     onClick: () -> Unit = {}
 ) {
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 12.dp)
+    val shape = chamferedShape(cutSize = 12f)
 
     Box(
         modifier = modifier
@@ -144,7 +144,7 @@ fun CyberWeatherWidget(
                 )
                 Text(
                     text = "AIR 98 AQI",
-                    color = marvelTheme.colors.accent,
+                    color = marvelTheme.colors.secondary,
                     fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold

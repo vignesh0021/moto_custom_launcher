@@ -47,7 +47,7 @@ fun CyberCalendarWidget(
 ) {
     val context = LocalContext.current
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 12.dp)
+    val shape = chamferedShape(cutSize = 12f)
 
     val now = remember { Date() }
     val dayOfWeek = remember(now) { SimpleDateFormat("EEEE", Locale.US).format(now).uppercase() }

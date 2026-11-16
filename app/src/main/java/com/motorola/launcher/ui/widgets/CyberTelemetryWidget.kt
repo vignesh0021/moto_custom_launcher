@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import com.motorola.launcher.system.SystemTelemetryState
 import com.motorola.launcher.ui.components.chamferedShape
 import com.motorola.launcher.ui.theme.LocalMarvelTheme
@@ -42,7 +43,7 @@ fun CyberTelemetryWidget(
     onOpenDiagnostics: () -> Unit = {}
 ) {
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 12.dp)
+    val shape = chamferedShape(cutSize = 12f)
 
     Box(
         modifier = modifier
@@ -111,9 +112,14 @@ fun CyberTelemetryWidget(
                 }
 
                 // Temp & RAM
+                val ramUsedMb = if (telemetry.ramUsedBytes > 0) telemetry.ramUsedBytes / (1024 * 1024) else 0L
+                val ramTotalMb = if (telemetry.ramTotalBytes > 0) telemetry.ramTotalBytes / (1024 * 1024) else 0L
+                val tempText = if (telemetry.batteryTempCelsius.isNaN()) "--" else String.format(Locale.US, "%.1f", telemetry.batteryTempCelsius)
+                val refreshRateText = if (telemetry.refreshRateHz > 0) "${telemetry.refreshRateHz}Hz" else "60Hz"
+
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "${String.format("%.1f", telemetry.batteryTemp)}°C",
+                        text = "$tempText°C",
                         color = marvelTheme.colors.primary,
                         fontSize = 18.sp,
                         fontFamily = FontFamily.Monospace,
@@ -121,7 +127,7 @@ fun CyberTelemetryWidget(
                         style = HudTextStyle
                     )
                     Text(
-                        text = "${telemetry.ramUsedMb} MB / ${telemetry.ramTotalMb} MB",
+                        text = "$ramUsedMb MB / $ramTotalMb MB",
                         color = TextSecondary,
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace
@@ -141,8 +147,8 @@ fun CyberTelemetryWidget(
                     fontFamily = FontFamily.Monospace
                 )
                 Text(
-                    text = "REFRESH: ${telemetry.refreshRate.toInt()}Hz",
-                    color = marvelTheme.colors.accent,
+                    text = "REFRESH: $refreshRateText",
+                    color = marvelTheme.colors.secondary,
                     fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold

@@ -46,7 +46,7 @@ fun AppShortcutPickerDialog(
     onDismiss: () -> Unit
 ) {
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 16.dp)
+    val shape = chamferedShape(cutSize = 16f)
 
     Dialog(
         onDismissRequest = onDismiss,

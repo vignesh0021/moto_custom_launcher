@@ -180,7 +180,7 @@ private fun WorkspaceActionRow(
     onClick: () -> Unit
 ) {
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 8.dp)
+    val shape = chamferedShape(cutSize = 8f)
 
     Box(
         modifier = Modifier

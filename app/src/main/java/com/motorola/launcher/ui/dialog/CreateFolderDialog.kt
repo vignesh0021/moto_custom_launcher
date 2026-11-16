@@ -44,7 +44,7 @@ fun CreateFolderDialog(
     onDismiss: () -> Unit
 ) {
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 14.dp)
+    val shape = chamferedShape(cutSize = 14f)
     var folderName by remember { mutableStateOf("") }
 
     Dialog(

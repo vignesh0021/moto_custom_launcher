@@ -49,7 +49,7 @@ fun CyberMediaWidget(
 ) {
     val context = LocalContext.current
     val marvelTheme = LocalMarvelTheme.current
-    val shape = chamferedShape(cutSize = 12.dp)
+    val shape = chamferedShape(cutSize = 12f)
     var isPlaying by remember { mutableStateOf(false) }
 
     fun sendMediaKey(keyCode: Int) {
