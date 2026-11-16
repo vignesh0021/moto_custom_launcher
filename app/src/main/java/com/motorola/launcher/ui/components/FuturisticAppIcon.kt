@@ -92,14 +92,18 @@ fun FuturisticAppIcon(
                     style = Stroke(width = 1.dp.toPx())
                 )
                 // Icon bitmap
-                bitmap?.let {
+                bitmap?.let { bmp ->
+                    val padding = 6.dp.toPx()
+                    val maxSize = (size.width - padding * 2).coerceAtLeast(1f)
+                    val scale = minOf(maxSize / bmp.width, maxSize / bmp.height)
+                    val drawW = (bmp.width * scale).toInt().coerceAtLeast(1)
+                    val drawH = (bmp.height * scale).toInt().coerceAtLeast(1)
+                    val offsetX = ((size.width - drawW) / 2f).toInt()
+                    val offsetY = ((size.height - drawH) / 2f).toInt()
                     drawImage(
-                        image = it.asImageBitmap(),
-                        dstOffset = androidx.compose.ui.unit.IntOffset(
-                            ((size.width - it.width) / 2).toInt(),
-                            ((size.height - it.height) / 2).toInt()
-                        ),
-                        dstSize = androidx.compose.ui.unit.IntSize(it.width, it.height)
+                        image = bmp.asImageBitmap(),
+                        dstOffset = androidx.compose.ui.unit.IntOffset(offsetX, offsetY),
+                        dstSize = androidx.compose.ui.unit.IntSize(drawW, drawH)
                     )
                 }
                 // Glow ring on top edge
